@@ -3,318 +3,217 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Suggestion box + Code panel</title>
+  <title>Suggestion box — shared unlock & publish</title>
   <style>
-    :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111; }
-    body { margin: 20px; background:#f6f7fb; }
-    .wrap { display:flex; gap:20px; align-items:flex-start; max-width:1100px; margin:0 auto; }
-    .card { background:white; border-radius:8px; box-shadow:0 6px 18px rgba(18,24,40,0.06); padding:16px; flex:1; }
-    h2 { margin:0 0 12px 0; font-size:18px; }
-    form { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
-    input[type="text"] { padding:8px 10px; border:1px solid #d7dbe6; border-radius:6px; font-size:14px; width:100%; }
-    button { padding:8px 12px; border-radius:6px; border:0; background:#2563eb; color:white; cursor:pointer; }
-    button.ghost { background:transparent; color:#374151; border:1px solid #e6e9f2; }
-    .suggestions-list { margin-top:8px; display:flex; flex-direction:column; gap:8px; max-height:420px; overflow:auto; padding-right:6px; }
-    .suggestion { display:flex; gap:8px; align-items:flex-start; padding:8px; border:1px solid #eef2ff; border-radius:8px; }
-    .code-badge { background:#eef2ff; color:#1e3a8a; font-weight:600; padding:6px 8px; border-radius:6px; font-size:13px; display:inline-block; min-width:64px; text-align:center; }
-    .s-text { flex:1; white-space:pre-wrap; word-break:break-word; font-size:14px; color:#111827; }
-    .s-actions { display:flex; gap:6px; align-items:center; }
-    .small { font-size:12px; color:#6b7280; }
-    .code-panel { display:flex; flex-direction:column; gap:8px; }
-    textarea.code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:13px; padding:12px; border-radius:8px; border:1px solid #e6e9f2; background:#0f172a08; min-height:260px; resize:vertical; width:100%; }
-    .matches { margin-top:6px; display:flex; flex-direction:column; gap:8px; max-height:350px; overflow:auto; }
-    .no-match { color:#9ca3af; font-size:13px; }
-    .controls { display:flex; gap:8px; align-items:center; }
-    .muted { color:#6b7280; font-size:13px; }
-    .clear { background:#ef4444; }
-    @media (max-width:900px) { .wrap { flex-direction:column; } }
+    /* New look: modern, clean, slightly larger UI, soft shadows, and accent color */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#60a5fa; --accent-2:#7c3aed; --glass: rgba(255,255,255,0.04);
+      --success:#16a34a; --danger:#ef4444; --radius:12px; --pad:18px; color-scheme: dark;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#071023 0%, #071428 60%); color:#e6eef8; -webkit-font-smoothing:antialiased; padding:36px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .container{width:1100px; max-width:96vw; display:grid; grid-template-columns:420px 1fr; gap:22px;}
+    header.top{grid-column:1/-1; display:flex; align-items:center; gap:16px; margin-bottom:6px}
+    .logo{width:48px;height:48px;border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
+    .title{font-size:18px;font-weight:600}
+    .subtitle{font-size:13px;color:var(--muted)}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), var(--card)); border-radius:var(--radius); padding:var(--pad); box-shadow:0 10px 30px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.03)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+    .form-row{display:flex; gap:10px; align-items:center}
+    input[type=text]{flex:1; padding:10px 12px; border-radius:10px; background:var(--glass); border:1px solid rgba(255,255,255,0.03); color:var(--muted); outline:none}
+    .small-input{width:140px}
+    button.btn{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; border:0; padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04); color:var(--muted); padding:8px 10px; border-radius:10px; cursor:pointer}
+    button.warn{background:var(--danger);}
+    .pending{margin-top:14px; padding:12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border:1px dashed rgba(255,255,255,0.03)}
+    .pending .row{display:flex; justify-content:space-between; gap:10px}
+    .suggestions-list{margin-top:12px; display:flex; flex-direction:column; gap:10px; max-height:520px; overflow:auto}
+    .suggestion{display:flex; gap:12px; align-items:center; padding:10px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.02)}
+    .code-badge{min-width:72px; text-align:center; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.03); color:var(--accent); font-weight:700}
+    .s-text{flex:1}
+    .s-text .title{font-weight:700; color:#e6eef8}
+    .s-text .meta{font-size:12px;color:var(--muted); margin-top:6px}
+    .s-actions{display:flex; gap:8px}
+    .code-panel{display:flex; flex-direction:column}
+    textarea.code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; background:transparent; border-radius:12px; border:1px solid rgba(255,255,255,0.03); padding:14px; min-height:360px; color:#cfe6ff; font-size:13px; resize:vertical}
+    .controls{display:flex; justify-content:space-between; align-items:center; margin-top:8px}
+    .muted{color:var(--muted)}
+    .matches{margin-top:12px; display:flex; flex-direction:column; gap:8px; max-height:300px; overflow:auto}
+    .no-match{color:var(--muted); font-size:13px}
+    footer.note{grid-column:1/-1; margin-top:14px; color:var(--muted); font-size:12px}
+    @media (max-width:980px){ .container{grid-template-columns:1fr;} }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card" style="max-width:480px;">
-      <h2>Add suggestion</h2>
-      <form id="addForm">
-        <input id="sText" type="text" placeholder="Suggestion text (what you want saved)" required />
-        <input id="sCode" type="text" placeholder="Optional code (e.g. ABC123)" style="width:140px;" />
-        <button type="submit">Add</button>
-      </form>
-      <div class="controls" style="justify-content:space-between;">
-        <div class="muted">Stored suggestions: <span id="count">0</span></div>
-        <div style="display:flex;gap:8px;">
-          <button id="export" class="ghost" title="Export suggestions as JSON">Export</button>
-          <button id="import" class="ghost" title="Import JSON">Import</button>
-          <button id="clearAll" class="clear" title="Clear all">Clear</button>
-        </div>
+  <div class="container">
+    <header class="top">
+      <div class="logo">SB</div>
+      <div>
+        <div class="title">Suggestion box — shared unlock</div>
+        <div class="subtitle">Type the unlock code in the code panel to reveal shared suggestions (same for everyone)</div>
       </div>
-      <div class="suggestions-list" id="list"></div>
-    </div>
+    </header>
 
     <div class="card">
-      <h2>Code panel — type a code to surface matching suggestions</h2>
-      <div class="code-panel">
-        <textarea id="codeArea" class="code" placeholder="Type or paste code here. If a suggestion code (e.g. ABC123) appears in this text it will show the associated suggestion(s). Use * to show all suggestions."></textarea>
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div class="muted">Matches for codes found in the code text (live)</div>
-          <div>
-            <button id="showAll" class="ghost">Show all</button>
-            <button id="clearCode" class="ghost">Clear code</button>
-          </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div class="subtitle">Stored shared suggestions: <strong id="count">0</strong></div>
         </div>
-        <div class="matches" id="matches"></div>
+        <div style="display:flex;gap:8px">
+          <button id="export" class="ghost">Export</button>
+          <button id="import" class="ghost">Import</button>
+          <button id="clearAll" class="ghost warn">Clear cache</button>
+        </div>
       </div>
+
+      <hr style="border:none;height:12px;opacity:0">
+
+      <label>Add suggestion (local only)</label>
+      <div class="form-row">
+        <input id="sText" type="text" placeholder="Suggestion text (saved locally)" />
+        <input id="sCode" class="small-input" type="text" placeholder="Code (opt.)" />
+        <button id="addBtn" class="btn">Add</button>
+      </div>
+
+      <div class="pending" id="pendingBox">
+        <div class="row"><div style="font-weight:700">Pending local suggestions</div><div class="muted" id="pendingCount">0 pending</div></div>
+        <div style="margin-top:10px; display:flex; gap:8px">
+          <button id="publishBtn" class="btn">Publish pending to repo</button>
+          <button id="clearPending" class="ghost">Clear pending</button>
+        </div>
+        <div class="status" id="publishStatus"></div>
+      </div>
+
+      <div id="suggestionsContainer"></div>
     </div>
+
+    <div class="card code-panel">
+      <label>Code panel — unlock & reveal</label>
+      <textarea id="codeArea" class="code" placeholder="Type unlock code 5213 here to reveal shared suggestions"></textarea>
+      <div class="controls">
+        <div class="muted">Matches for codes found in the code text (live)</div>
+        <div style="display:flex;gap:8px">
+          <button id="lockToggle" class="ghost">Lock</button>
+          <button id="clearCode" class="ghost">Clear</button>
+        </div>
+      </div>
+      <div class="matches" id="matches"></div>
+    </div>
+
+    <footer class="note">Note: local suggestions remain pending until published. Publishing uses your GitHub Personal Access Token in the browser and commits suggestions.json into the repository.</footer>
   </div>
 
   <input id="fileInput" type="file" accept="application/json" style="display:none" />
 
   <script>
-    // Simple suggestion store (localStorage)
+    const SHARED_URL = 'https://raw.githubusercontent.com/37592747483/Suggestion-box/main/suggestions.json';
+    const GITHUB_API_BASE = 'https://api.github.com';
+    const OWNER = '37592747483';
+    const REPO = 'Suggestion-box';
+    const FILE_PATH = 'suggestions.json';
+
     const STORAGE_KEY = 'suggestions-data-v1';
-    function generateCode() {
-      return Math.random().toString(36).slice(2,8).toUpperCase();
-    }
+    const PENDING_KEY = 'suggestions-pending-v1';
+    const REVEAL_KEY = 'suggestions-reveal-code-v1';
+    const UNLOCKED_KEY = 'suggestions-unlocked-v1';
 
-    function load() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      try { return JSON.parse(raw); } catch(e) { return []; }
-    }
-    function save(arr) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-    }
+    const DEFAULT_REVEAL = '5213';
 
-    const state = { suggestions: load() };
+    function loadSharedCache() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e){ return []; } }
+    function saveSharedCache(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+    function loadPending(){ try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || []; } catch(e) { return []; } }
+    function savePending(arr){ localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
+    function getRevealCode(){ return localStorage.getItem(REVEAL_KEY) || DEFAULT_REVEAL; }
+    function setRevealCode(code){ localStorage.setItem(REVEAL_KEY, String(code)); }
+    function isUnlocked(){ return sessionStorage.getItem(UNLOCKED_KEY) === '1'; }
+    function setUnlocked(v){ sessionStorage.setItem(UNLOCKED_KEY, v ? '1' : '0'); }
 
-    // DOM refs
+    const state = { shared: loadSharedCache(), pending: loadPending() };
+
     const sText = document.getElementById('sText');
     const sCode = document.getElementById('sCode');
-    const addForm = document.getElementById('addForm');
-    const listEl = document.getElementById('list');
+    const suggestionsContainer = document.getElementById('suggestionsContainer');
     const matchesEl = document.getElementById('matches');
     const codeArea = document.getElementById('codeArea');
     const countEl = document.getElementById('count');
-    const showAllBtn = document.getElementById('showAll');
+    const lockToggleBtn = document.getElementById('lockToggle');
     const clearCodeBtn = document.getElementById('clearCode');
     const exportBtn = document.getElementById('export');
     const importBtn = document.getElementById('import');
     const clearAllBtn = document.getElementById('clearAll');
     const fileInput = document.getElementById('fileInput');
+    const publishBtn = document.getElementById('publishBtn');
+    const clearPendingBtn = document.getElementById('clearPending');
+    const pendingCountEl = document.getElementById('pendingCount');
+    const publishStatusEl = document.getElementById('publishStatus');
 
-    function renderList() {
-      listEl.innerHTML = '';
-      state.suggestions.forEach((s, i) => {
-        const row = document.createElement('div');
-        row.className = 'suggestion';
-        row.innerHTML = `
-          <div class="code-badge">${escapeHtml(s.code)}</div>
-          <div class="s-text">
-            <div style="font-weight:600">${escapeHtml(s.text)}</div>
-            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
-          </div>
-          <div class="s-actions">
-            <button class="ghost" data-idx="${i}" title="Copy code">Copy</button>
-            <button class="ghost" data-del="${i}" title="Delete">Delete</button>
-          </div>
-        `;
-        listEl.appendChild(row);
-      });
-      countEl.textContent = state.suggestions.length;
-      wireListButtons();
-      updateMatchesFromCode(); // update matches because list changed
-    }
+    function generateCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-    function wireListButtons() {
-      listEl.querySelectorAll('[data-idx]').forEach(btn => {
-        btn.onclick = () => {
-          const s = state.suggestions[btn.dataset.idx];
-          navigator.clipboard?.writeText(s.code).catch(()=>{});
-        };
-      });
-      listEl.querySelectorAll('[data-del]').forEach(btn => {
-        btn.onclick = () => {
-          const idx = Number(btn.dataset.del);
-          state.suggestions.splice(idx,1);
-          save(state.suggestions);
-          renderList();
-        };
-      });
-    }
+    async function fetchShared(){ try{ const r = await fetch(SHARED_URL + '?cachebust=' + Date.now(), {cache:'no-store'}); if(!r.ok) throw new Error('Failed to fetch shared suggestions'); const arr = await r.json(); if(!Array.isArray(arr)) throw new Error('Invalid format'); state.shared = arr; saveSharedCache(arr); return arr; }catch(err){ return state.shared || []; } }
 
-    addForm.addEventListener('submit', e => {
-      e.preventDefault();
-      const text = sText.value.trim();
-      let code = sCode.value.trim();
-      if (!text) return;
-      if (!code) {
-        // create friendly code from words or random
-        const word = text.split(/\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase();
-        code = (word.slice(0,6) || generateCode()).toUpperCase();
-        // ensure uniqueness
-        while (state.suggestions.some(s=>s.code===code)) code = generateCode();
-      } else {
-        code = code.toUpperCase();
-        if (state.suggestions.some(s=>s.code===code)) {
-          // make unique by appending suffix
-          let suffix = 1;
-          while (state.suggestions.some(s=>s.code===`${code}-${suffix}`)) suffix++;
-          code = `${code}-${suffix}`;
-        }
-      }
-      const obj = { code, text, created: Date.now() };
-      state.suggestions.unshift(obj); // newest first
-      save(state.suggestions);
-      sText.value = '';
-      sCode.value = '';
-      renderList();
-      sText.focus();
-    });
+    function renderSuggestionsContainer(){ suggestionsContainer.innerHTML = ''; if(!isUnlocked()){ const locked = document.createElement('div'); locked.className = 'locked'; locked.style.padding='18px'; locked.style.borderRadius='10px'; locked.style.background='linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02))'; locked.innerHTML = `<div style=\"text-align:center\"><div style=\"font-weight:700;margin-bottom:6px\">Shared suggestions are locked</div><div class=\"muted\">Type the numeric unlock code into the code panel to reveal the shared suggestions from the repository. Current unlock code is ${getRevealCode()}.</div><div class=\"muted\" style=\"margin-top:8px\">Pending local suggestions will not be shown until published to the repository file.</div></div>`; suggestionsContainer.appendChild(locked); lockToggleBtn.textContent = 'Lock'; countEl.textContent = (state.shared || []).length; matchesEl.innerHTML = ''; return; }
 
-    codeArea.addEventListener('input', () => updateMatchesFromCode());
+      const listEl = document.createElement('div'); listEl.className = 'suggestions-list'; (state.shared || []).forEach((s,i)=>{ const row = document.createElement('div'); row.className='suggestion'; row.innerHTML = `<div class=\"code-badge\">${escapeHtml(s.code)}</div><div class=\"s-text\"><div class=\"title\">${escapeHtml(s.text)}</div><div class=\"meta\">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div></div><div class=\"s-actions\"><button class=\"ghost\" data-idx=\"${i}\">Insert</button><button class=\"ghost\" data-copy=\"${s.code}\">Copy</button></div>`; listEl.appendChild(row); }); suggestionsContainer.appendChild(listEl); countEl.textContent = (state.shared || []).length; wireListButtons(); updateMatchesFromCode(); lockToggleBtn.textContent='Lock'; }
 
-    function extractCodesFromText(txt) {
-      // A fuzzy approach:
-      // - Treat tokens of letters/numbers (length >=2) as possible codes
-      // - Also check explicit bracketed/capital tokens
-      const tokens = new Set();
-      txt.replace(/\b([A-Za-z0-9\-_]{2,})\b/g, (_, t) => tokens.add(t.toUpperCase()));
-      // also tokens with # or : (e.g. #ABC)
-      txt.replace(/[#@:]\s*([A-Za-z0-9\-_]{2,})/g, (_, t) => tokens.add(t.toUpperCase()));
-      return Array.from(tokens);
-    }
+    function wireListButtons(){ suggestionsContainer.querySelectorAll('[data-idx]').forEach(btn=>{ btn.onclick = () => { const s = state.shared[btn.dataset.idx]; insertAtCursor(codeArea, s.code); updateMatchesFromCode(); }; }); suggestionsContainer.querySelectorAll('[data-copy]').forEach(btn=>{ btn.onclick = () => navigator.clipboard?.writeText(btn.dataset.copy).catch(()=>{}); }); }
 
-    function updateMatchesFromCode() {
-      const txt = codeArea.value || '';
-      if (txt.trim() === '*') {
-        renderMatches(state.suggestions);
-        return;
-      }
-      const tokens = extractCodesFromText(txt);
-      if (!tokens.length) {
-        matchesEl.innerHTML = `<div class="no-match">No codes detected — start typing a code like ABC123 to see matched suggestions, or press "Show all".</div>`;
-        return;
-      }
-      // find suggestions where code is present in tokens OR where token appears inside suggestion code (partial)
-      const tokenSet = new Set(tokens);
-      const matched = state.suggestions.filter(s =>
-        tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))
-      );
-      if (!matched.length) {
-        matchesEl.innerHTML = `<div class="no-match">No suggestions match the codes detected: ${Array.from(tokens).join(', ')}</div>`;
-      } else {
-        renderMatches(matched, tokens);
-      }
-    }
+    document.getElementById('addBtn').addEventListener('click', (e)=>{ e.preventDefault(); const text = sText.value.trim(); let code = sCode.value.trim(); if(!text) return alert('Enter suggestion text'); if(!code){ const word = text.split(/\\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase(); code = (word.slice(0,6) || generateCode()).toUpperCase(); while(state.pending.some(s=>s.code===code) || (state.shared||[]).some(s=>s.code===code)) code = generateCode(); } else { code = code.toUpperCase(); if(state.pending.some(s=>s.code===code) || (state.shared||[]).some(s=>s.code===code)){ let suffix=1; while(state.pending.some(s=>s.code===`${code}-${suffix}`) || (state.shared||[]).some(s=>s.code===`${code}-${suffix}`)) suffix++; code = `${code}-${suffix}`; } } const obj={code,text,created:Date.now()}; state.pending.unshift(obj); savePending(state.pending); sText.value=''; sCode.value=''; renderPending(); publishStatusEl.textContent = 'Saved locally. Use \"Publish pending to repo\" to push to repository (requires a GitHub PAT with repo scope).'; });
 
-    function renderMatches(arr, tokens = []) {
-      matchesEl.innerHTML = '';
-      arr.forEach(s => {
-        const item = document.createElement('div');
-        item.className = 'suggestion';
-        item.style.alignItems = 'center';
-        item.innerHTML = `
-          <div class="code-badge">${escapeHtml(s.code)}</div>
-          <div class="s-text">
-            <div style="font-weight:600">${escapeHtml(s.text)}</div>
-            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button class="ghost" data-insert="${s.code}">Insert</button>
-            <button class="ghost" data-copy="${s.code}">Copy</button>
-          </div>
-        `;
-        matchesEl.appendChild(item);
-      });
-      // wire buttons
-      matchesEl.querySelectorAll('[data-copy]').forEach(b => {
-        b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{});
-      });
-      matchesEl.querySelectorAll('[data-insert]').forEach(b => {
-        b.onclick = () => {
-          const code = b.dataset.insert;
-          // insert code at cursor
-          const el = codeArea;
-          const start = el.selectionStart || 0;
-          const end = el.selectionEnd || 0;
-          const val = el.value;
-          el.value = val.slice(0,start) + code + val.slice(end);
-          el.focus();
-          const pos = start + code.length;
-          el.setSelectionRange(pos,pos);
-          updateMatchesFromCode();
-        };
-      });
-    }
+    function renderPending(){ pendingCountEl.textContent = state.pending.length + ' pending'; }
+    function insertAtCursor(el,text){ const start = el.selectionStart||0; const end = el.selectionEnd||0; const val = el.value; el.value = val.slice(0,start)+text+val.slice(end); el.focus(); const pos = start+text.length; el.setSelectionRange(pos,pos); }
 
-    // Export/Import/Clear
-    exportBtn.onclick = () => {
-      const dataStr = JSON.stringify(state.suggestions, null, 2);
-      const blob = new Blob([dataStr], { type:'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'suggestions.json'; document.body.appendChild(a); a.click();
-      a.remove(); URL.revokeObjectURL(url);
-    };
-    importBtn.onclick = () => fileInput.click();
-    fileInput.onchange = e => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const imported = JSON.parse(reader.result);
-          if (!Array.isArray(imported)) throw new Error('JSON needs to be an array');
-          // sanitize and merge (avoid duplicate codes)
-          for (const it of imported) {
-            if (!it.code || !it.text) continue;
-            let code = String(it.code).toUpperCase();
-            if (state.suggestions.some(s => s.code === code)) {
-              // append suffix
-              let suffix = 1;
-              while (state.suggestions.some(s => s.code === `${code}-${suffix}`)) suffix++;
-              code = `${code}-${suffix}`;
-            }
-            state.suggestions.push({ code, text: String(it.text), created: it.created || Date.now() });
-          }
-          save(state.suggestions);
-          renderList();
-          fileInput.value = '';
-        } catch (err) {
-          alert('Invalid JSON import: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-    };
-    clearAllBtn.onclick = () => {
-      if (!confirm('Clear all suggestions?')) return;
-      state.suggestions = [];
-      save(state.suggestions);
-      renderList();
+    function extractCodesFromText(txt){ const tokens = new Set(); txt.replace(/\\b([A-Za-z0-9\\-_]{2,})\\b/g, (_, t)=>tokens.add(t.toUpperCase())); txt.replace(/[#@: ]\\s*([A-Za-z0-9\\-_]{2,})/g, (_, t)=>tokens.add(t.toUpperCase())); return Array.from(tokens); }
+
+    async function updateMatchesFromCode(){ const txt = codeArea.value || ''; const revealCode = String(getRevealCode()).trim(); if(revealCode && txt.includes(revealCode)){ setUnlocked(true); await fetchShared(); renderSuggestionsContainer(); } if(!isUnlocked()){ matchesEl.innerHTML = ''; return; } if(txt.trim() === '*'){ renderMatches(state.shared || []); return; } const tokens = extractCodesFromText(txt); if(!tokens.length){ matchesEl.innerHTML = `<div class=\"no-match\">No codes detected — type or paste suggestion codes into the code panel.</div>`; return; } const tokenSet = new Set(tokens); const matched = (state.shared || []).filter(s => tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))); if(!matched.length){ matchesEl.innerHTML = `<div class=\"no-match\">No shared suggestions match the detected tokens: ${tokens.join(', ')}</div>`; } else { renderMatches(matched); } }
+
+    function renderMatches(arr){ matchesEl.innerHTML = ''; arr.forEach(s=>{ const item = document.createElement('div'); item.className='suggestion'; item.style.alignItems='center'; item.innerHTML = `<div class=\"code-badge\">${escapeHtml(s.code)}</div><div class=\"s-text\"><div class=\"title\">${escapeHtml(s.text)}</div><div class=\"meta\">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div></div><div style=\"display:flex;gap:6px;align-items:center;\"><button class=\"ghost\" data-insert=\"${s.code}\">Insert</button><button class=\"ghost\" data-copy=\"${s.code}\">Copy</button></div>`; matchesEl.appendChild(item); }); matchesEl.querySelectorAll('[data-copy]').forEach(b=>b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{})); matchesEl.querySelectorAll('[data-insert]').forEach(b=>b.onclick = () => { insertAtCursor(codeArea, b.dataset.insert); updateMatchesFromCode(); }); }
+
+    exportBtn.onclick = () => { const dataStr = JSON.stringify(state.shared, null, 2); const blob = new Blob([dataStr], { type:'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'shared-suggestions.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); };
+    importBtn.onclick = () => fileInput.click(); fileInput.onchange = e => { const file = e.target.files && e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = () => { try { const imported = JSON.parse(reader.result); if(!Array.isArray(imported)) throw new Error('JSON needs to be an array'); state.shared = imported; saveSharedCache(state.shared); renderSuggestionsContainer(); } catch(err){ alert('Invalid JSON import: ' + err.message); } }; reader.readAsText(file); };
+
+    clearAllBtn.onclick = () => { if(!confirm('Clear shared cache (local only)?')) return; state.shared = []; saveSharedCache(state.shared); renderSuggestionsContainer(); };
+
+    publishBtn.onclick = async () => {
+      publishStatusEl.textContent = '';
+      if(!state.pending.length) return alert('No pending suggestions to publish.');
+      const token = prompt('Enter a GitHub Personal Access Token (repo scope). The token is kept in this tab session only.');
+      if(!token) return;
+      publishStatusEl.textContent = 'Publishing...';
+      try{
+        const getUrl = `${GITHUB_API_BASE}/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
+        let current=null; let sha=null;
+        const getRes = await fetch(getUrl, { headers: { Authorization: 'token ' + token, Accept: 'application/vnd.github+json' } });
+        if(getRes.ok){ current = await getRes.json(); sha = current.sha; }
+        let existing = [];
+        if(current && current.content){ const decoded = atob(current.content.replace(/\\n/g,'')); try{ existing = JSON.parse(decoded); if(!Array.isArray(existing)) existing = []; }catch(e){ existing = []; } } else { try{ const raw = await fetch(SHARED_URL + '?cachebust=' + Date.now(), { cache:'no-store' }); if(raw.ok) existing = await raw.json(); }catch(e){} }
+        const byCode = {};
+        (existing || []).forEach(s=>{ if(s && s.code) byCode[s.code.toUpperCase()] = s; });
+        (state.pending || []).forEach(s=>{ if(s && s.code) byCode[s.code.toUpperCase()] = s; });
+        const merged = Object.values(byCode);
+        const contentStr = JSON.stringify(merged, null, 2);
+        const encodeBase64 = str => btoa(unescape(encodeURIComponent(str)));
+        const body = { message: 'Update suggestions.json — published from web UI', content: encodeBase64(contentStr), committer: { name: 'web-publish', email: 'noreply@example.com' } };
+        if(sha) body.sha = sha;
+        const putUrl = `${GITHUB_API_BASE}/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
+        const putRes = await fetch(putUrl, { method:'PUT', headers: { Authorization: 'token ' + token, Accept: 'application/vnd.github+json', 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+        if(!putRes.ok){ const errText = await putRes.text(); throw new Error('GitHub API error: ' + putRes.status + ' ' + errText); }
+        const result = await putRes.json(); state.shared = merged; saveSharedCache(state.shared); state.pending = []; savePending(state.pending); renderPending(); renderSuggestionsContainer(); publishStatusEl.textContent = 'Published successfully. Commit: ' + (result.commit && result.commit.sha ? result.commit.sha : 'unknown');
+      }catch(err){ publishStatusEl.textContent = 'Publish failed: ' + err.message; alert('Publish failed: ' + err.message); }
     };
 
-    showAllBtn.onclick = () => {
-      renderMatches(state.suggestions);
-      codeArea.value = '*';
-    };
-    clearCodeBtn.onclick = () => {
-      codeArea.value = '';
-      updateMatchesFromCode();
-      codeArea.focus();
-    };
+    clearPendingBtn.onclick = () => { if(!confirm('Clear pending local suggestions?')) return; state.pending = []; savePending(state.pending); renderPending(); };
 
-    // escape to prevent HTML injection in text nodes
-    function escapeHtml(s) {
-      return String(s)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#39;');
-    }
+    lockToggleBtn.onclick = async () => { if(isUnlocked()){ setUnlocked(false); renderSuggestionsContainer(); } else { const txt = codeArea.value || ''; const reveal = getRevealCode(); if(reveal && txt.includes(reveal)){ await fetchShared(); setUnlocked(true); renderSuggestionsContainer(); } else { alert('To unlock, type the numeric unlock code ' + getRevealCode() + ' into the code panel.'); } } };
 
-    // initial render
-    renderList();
-    updateMatchesFromCode();
+    clearCodeBtn.onclick = () => { codeArea.value = ''; updateMatchesFromCode(); codeArea.focus(); };
+
+    function init(){ if(!localStorage.getItem(REVEAL_KEY)) setRevealCode(DEFAULT_REVEAL); if(!sessionStorage.getItem(UNLOCKED_KEY)) setUnlocked(false); renderPending(); state.shared = loadSharedCache(); renderSuggestionsContainer(); codeArea.addEventListener('input', debounce(()=> updateMatchesFromCode(), 120)); }
+    function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+    init();
   </script>
 </body>
 </html>
