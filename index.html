@@ -7,6 +7,7 @@
   <style>
     :root{ --bg:#050507; --neon1:#ff1630; --neon2:#8b0000; --muted:#d6bdbd }
     html,body{height:100%;margin:0}
+    html{ background-color: var(--bg); background-attachment: fixed; }
     body{
       background: radial-gradient(1200px 400px at 10% 10%, rgba(139,0,0,0.12), transparent 8%),
                   radial-gradient(800px 300px at 90% 90%, rgba(255,22,48,0.06), transparent 6%),
@@ -17,12 +18,7 @@
     .scene{position:relative; width:min(980px,96vw); border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); overflow:visible;}
     .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size:36px 36px; opacity:0.06; border-radius:18px; pointer-events:none; }
     .header-area{position:relative; padding:44px 40px 20px; display:flex; gap:28px; align-items:center; z-index:2}
-    .sb {
-      font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:left;
-      color:var(--neon1); text-shadow: 0 0 22px rgba(255,22,48,0.28), 0 0 46px rgba(139,0,0,0.14), 0 12px 36px rgba(0,0,0,0.6);
-      -webkit-text-stroke: 1px rgba(0,0,0,0.35);
-      margin:0;
-    }
+    .sb { font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:left; color:var(--neon1); text-shadow: 0 0 22px rgba(255,22,48,0.28), 0 0 46px rgba(139,0,0,0.14), 0 12px 36px rgba(0,0,0,0.6); -webkit-text-stroke: 1px rgba(0,0,0,0.35); margin:0; }
     .subtitle{ color:#ffd9d9; opacity:0.95; font-size:18px; letter-spacing:0.14em; text-transform:none; margin-top:18px }
 
     .card{background:linear-gradient(180deg, rgba(255,22,48,0.03), rgba(0,0,0,0.02)); border-radius:12px; padding:22px; margin:18px; border:1px solid rgba(255,22,48,0.08); box-shadow: 0 12px 40px rgba(255,22,48,0.03); position:relative; z-index:2}
@@ -34,7 +30,9 @@
     .panel{margin-top:14px;border-radius:10px;padding:12px;background:linear-gradient(180deg, rgba(255,22,48,0.02), rgba(0,0,0,0.25));border:1px solid rgba(255,22,48,0.04)}
     .hidden{display:none !important}
     ul{list-style:none;padding:0;margin:0;max-height:220px;overflow:auto}
-    li{padding:8px 10px;border-radius:8px;margin-bottom:8px;background:linear-gradient(90deg, rgba(255,22,48,0.02), rgba(0,0,0,0.18));border:1px solid rgba(255,22,48,0.03); word-break:break-word; }
+    li{padding:8px 10px;border-radius:8px;margin-bottom:8px;background:linear-gradient(90deg, rgba(255,22,48,0.02), rgba(0,0,0,0.18));border:1px solid rgba(255,22,48,0.03); word-break:break-word; display:flex;justify-content:space-between;align-items:center}
+    .tags{display:inline-flex;gap:6px;flex-wrap:wrap}
+    .tag{background:rgba(255,22,48,0.08);color:var(--neon1);padding:4px 8px;border-radius:999px;font-size:12px}
     .status{margin-left:8px;color:var(--muted);font-size:13px}
 
     .main-grid{display:grid;grid-template-columns: 1fr 380px; gap:20px; align-items:start}
@@ -45,6 +43,14 @@
     .footer-credit{margin-top:18px;text-align:center;color:var(--muted);font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
     .footer-credit a{color:var(--neon1);text-decoration:none;display:inline-flex;align-items:center;gap:8px}
     .firebase-logo{width:18px;height:18px;display:inline-block}
+
+    /* Admin panel at bottom */
+    #adminPanel{position:fixed;left:12px;right:12px;bottom:12px;background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.95));border:1px solid rgba(255,22,48,0.08);padding:12px;border-radius:10px;box-shadow:0 16px 48px rgba(0,0,0,0.6);max-height:40vh;overflow:auto;z-index:999}
+    #adminPanel header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    #adminPanel h3{margin:0;color:var(--neon1);font-size:16px}
+    .admin-actions{display:flex;gap:8px;align-items:center}
+    .small-ghost{background:transparent;border:1px solid rgba(255,22,48,0.08);color:var(--neon1);padding:6px 8px;border-radius:8px;cursor:pointer}
+    .delete-btn{background:transparent;border:none;color:#ff7b7b;font-weight:700;cursor:pointer;padding:6px 8px}
   </style>
 </head>
 <body>
@@ -63,6 +69,11 @@
           <h2><span style="display:inline-block;width:10px;height:14px;background:var(--neon1);margin-right:8px;border-radius:2px;vertical-align:middle"></span> Add a suggestion</h2>
           <p style="color:var(--muted);margin:8px 0 12px;font-size:13px">Write your suggestion below (max 400 chars). Press the Add button or Ctrl/Cmd+Enter to submit.</p>
           <textarea id="suggestionInput" placeholder="Write your suggestion..." maxlength="400"></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+            <input id="tagInput" type="text" placeholder="Tag (optional) e.g. feature" style="padding:8px;border-radius:8px;border:1px solid rgba(255,22,48,0.08);background:transparent;color:#fff;flex:0 0 160px" />
+            <div style="color:var(--muted);font-size:13px">(Optional)</div>
+          </div>
+
           <div class="controls">
             <button id="addBtn">Add Suggestion</button>
             <div class="status" id="status" aria-live="polite"></div>
@@ -74,10 +85,10 @@
           <h2><span style="display:inline-block;width:10px;height:14px;background:var(--neon1);margin-right:8px;border-radius:2px;vertical-align:middle"></span> Quick access</h2>
           <input id="codeInput" class="small" type="text" maxlength="2" placeholder="" aria-label="Code input" />
 
-          <div id="suggestionsPanel" class="panel hidden">
-            <strong>Suggestions</strong>
-            <ul id="suggestionsList" aria-live="polite"></ul>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px">Click a suggestion to copy it to clipboard.</div>
+          <div id="suggestionsPreview" class="panel">
+            <strong>Recent</strong>
+            <ul id="suggestionsPreviewList" aria-live="polite"></ul>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px">Tap a suggestion to copy it.</div>
           </div>
         </div>
       </div>
@@ -85,7 +96,6 @@
       <div class="footer-credit">
         <a href="https://firebase.google.com/" target="_blank" rel="noopener">
           <svg class="firebase-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-            <!-- Simplified Firebase flame mark (brand-like) -->
             <defs>
               <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
                 <stop offset="0%" stop-color="#FFCA28"/>
@@ -97,6 +107,20 @@
           <span>Powered by Firebase Firestore</span>
         </a>
       </div>
+    </div>
+  </div>
+
+  <!-- Admin panel (hidden by default, revealed by typing 13 into the code input) -->
+  <div id="adminPanel" class="hidden" aria-hidden="true">
+    <header>
+      <h3>Admin — Suggestions</h3>
+      <div class="admin-actions">
+        <button id="closeAdmin" class="small-ghost">Close</button>
+        <button id="refreshAdmin" class="small-ghost">Refresh</button>
+      </div>
+    </header>
+    <div style="margin-top:10px">
+      <ul id="adminList"></ul>
     </div>
   </div>
 
@@ -119,13 +143,18 @@
       let db = null;
 
       const suggestionInput = document.getElementById('suggestionInput');
+      const tagInput = document.getElementById('tagInput');
       const addBtn = document.getElementById('addBtn');
       const codeInput = document.getElementById('codeInput');
-      const suggestionsPanel = document.getElementById('suggestionsPanel');
-      const suggestionsList = document.getElementById('suggestionsList');
+      const suggestionsPreviewList = document.getElementById('suggestionsPreviewList');
       const status = document.getElementById('status');
 
-      console.log('elements:', { suggestionInput: !!suggestionInput, addBtn: !!addBtn, codeInput: !!codeInput, suggestionsPanel: !!suggestionsPanel });
+      const adminPanel = document.getElementById('adminPanel');
+      const adminList = document.getElementById('adminList');
+      const closeAdmin = document.getElementById('closeAdmin');
+      const refreshAdmin = document.getElementById('refreshAdmin');
+
+      console.log('elements:', { suggestionInput: !!suggestionInput, addBtn: !!addBtn, codeInput: !!codeInput, adminPanel: !!adminPanel });
 
       let suggestions = [];
 
@@ -163,7 +192,7 @@
         if (useFirestore && db) {
           try {
             const snapshot = await db.collection('suggestions').orderBy('timestamp', 'asc').get();
-            suggestions = snapshot.docs.map(d => (d.data() && d.data().text) || '').filter(Boolean);
+            suggestions = snapshot.docs.map(d => ({ id: d.id, ...(d.data()||{}) }));
           } catch (err) {
             console.error('Failed to read Firestore', err);
             showStatus('Failed to read Firestore — using local cache');
@@ -174,51 +203,111 @@
           const raw = localStorage.getItem('suggestions');
           suggestions = raw ? JSON.parse(raw) : [];
         }
-        renderSuggestions();
+        renderPreview();
+        renderAdminList();
       }
 
-      async function saveSuggestion(text){
+      async function saveSuggestion(text, tag){
+        const tags = tag ? [tag.trim()] : [];
+        // dedupe by exact text
+        if (suggestions.some(s => s.text === text)) return false;
+
         if (useFirestore && db) {
           try {
-            await db.collection('suggestions').add({ text, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            await db.collection('suggestions').add({ text, tags, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
           } catch (err) {
             console.error('Failed to write to Firestore', err);
             showStatus('Failed to save to Firestore — saved locally');
-            saveLocal(text);
+            saveLocal(text, tags);
           }
         } else {
-          saveLocal(text);
+          saveLocal(text, tags);
         }
         await loadSuggestions();
+        return true;
       }
 
-      function saveLocal(text){
+      function saveLocal(text, tags){
         const raw = localStorage.getItem('suggestions');
         const arr = raw ? JSON.parse(raw) : [];
-        arr.push(text);
+        const id = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+        arr.push({ id, text, tags, timestamp: Date.now() });
         localStorage.setItem('suggestions', JSON.stringify(arr));
       }
 
-      function renderSuggestions(){
-        suggestionsList.innerHTML = '';
-        if (!suggestions.length) {
-          const li = document.createElement('li'); li.textContent = 'No suggestions yet.'; suggestionsList.appendChild(li); return;
+      function renderPreview(){
+        suggestionsPreviewList.innerHTML = '';
+        const recent = suggestions.slice().reverse().slice(0,6);
+        if (!recent.length) {
+          const li = document.createElement('li'); li.textContent = 'No suggestions yet.'; suggestionsPreviewList.appendChild(li); return;
         }
-        suggestions.forEach(s => {
-          const li = document.createElement('li'); li.textContent = s; suggestionsList.appendChild(li);
+        recent.forEach(s => {
+          const li = document.createElement('li');
+          const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column';
+          const top = document.createElement('div'); top.textContent = s.text; top.style.fontSize='14px';
+          const tagsWrap = document.createElement('div'); tagsWrap.className='tags';
+          (s.tags||[]).forEach(t => { const tspan = document.createElement('span'); tspan.className='tag'; tspan.textContent=t; tagsWrap.appendChild(tspan); });
+          left.appendChild(top); left.appendChild(tagsWrap);
+          li.appendChild(left);
+          li.addEventListener('click', ()=>{ navigator.clipboard?.writeText(s.text).then(()=> showStatus('Copied to clipboard')); });
+          suggestionsPreviewList.appendChild(li);
         });
+      }
+
+      function renderAdminList(){
+        adminList.innerHTML = '';
+        if (!suggestions.length) {
+          const li = document.createElement('li'); li.textContent = 'No suggestions yet.'; adminList.appendChild(li); return;
+        }
+        // newest first
+        suggestions.slice().reverse().forEach(s => {
+          const li = document.createElement('li');
+          const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column'; left.style.gap='6px'; left.style.maxWidth='82%';
+          const top = document.createElement('div'); top.textContent = s.text; top.style.fontSize='14px';
+          const tagsWrap = document.createElement('div'); tagsWrap.className='tags';
+          (s.tags||[]).forEach(t => { const tspan = document.createElement('span'); tspan.className='tag'; tspan.textContent=t; tagsWrap.appendChild(tspan); });
+          left.appendChild(top); left.appendChild(tagsWrap);
+
+          const right = document.createElement('div'); right.style.display='flex'; right.style.alignItems='center'; right.style.gap='8px';
+          const del = document.createElement('button'); del.className='delete-btn'; del.textContent='Delete';
+          del.addEventListener('click', async ()=>{
+            if (!confirm('Delete this suggestion?')) return;
+            await deleteSuggestion(s.id);
+          });
+          right.appendChild(del);
+
+          li.appendChild(left); li.appendChild(right);
+          adminList.appendChild(li);
+        });
+      }
+
+      async function deleteSuggestion(id){
+        if (useFirestore && db) {
+          try {
+            await db.collection('suggestions').doc(id).delete();
+          } catch (err) {
+            console.error('Failed to delete in Firestore', err);
+            showStatus('Delete failed');
+          }
+        } else {
+          const raw = localStorage.getItem('suggestions');
+          const arr = raw ? JSON.parse(raw) : [];
+          const filtered = arr.filter(x => x.id !== id);
+          localStorage.setItem('suggestions', JSON.stringify(filtered));
+        }
+        await loadSuggestions();
       }
 
       function showStatus(msg){ if (!status) return; status.textContent = msg; setTimeout(()=>{ if (status.textContent === msg) status.textContent = '' }, 2200); }
 
       addBtn.addEventListener('click', async ()=>{
-        console.log('addBtn clicked');
         const text = suggestionInput.value.trim();
+        const tag = tagInput.value.trim();
         if (!text) { showStatus('Please enter a suggestion'); return; }
-        if (suggestions.includes(text)) { showStatus('Suggestion already exists'); suggestionInput.value = ''; return; }
+        if (suggestions.some(s => s.text === text)) { showStatus('Suggestion already exists'); suggestionInput.value = ''; return; }
         showStatus('Saving...');
-        await saveSuggestion(text);
-        suggestionInput.value = '';
+        await saveSuggestion(text, tag);
+        suggestionInput.value=''; tagInput.value='';
         showStatus('Saved');
       });
 
@@ -227,18 +316,20 @@
       codeInput.addEventListener('input', (e)=>{
         const v = e.target.value;
         if (v === '13') {
-          suggestionsPanel.classList.remove('hidden');
+          adminPanel.classList.remove('hidden'); adminPanel.setAttribute('aria-hidden','false');
           loadSuggestions();
+          // clear the code input to keep it secret
+          setTimeout(()=>{ codeInput.value=''; }, 250);
         } else {
-          suggestionsPanel.classList.add('hidden');
+          adminPanel.classList.add('hidden'); adminPanel.setAttribute('aria-hidden','true');
         }
       });
 
-      suggestionsList.addEventListener('click', (e)=>{
-        const li = e.target.closest('li'); if (!li) return;
-        const text = li.textContent || '';
-        navigator.clipboard?.writeText(text).then(()=> showStatus('Copied to clipboard')).catch(()=>{});
-      });
+      closeAdmin.addEventListener('click', ()=>{ adminPanel.classList.add('hidden'); adminPanel.setAttribute('aria-hidden','true'); });
+      refreshAdmin.addEventListener('click', ()=> loadSuggestions());
+
+      adminList.addEventListener('click', (e)=>{ const li = e.target.closest('li'); if (!li) return; });
+
     });
   </script>
 </body>
