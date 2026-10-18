@@ -17,8 +17,8 @@
     }
     .scene{position:relative; width:min(980px,96vw); border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); overflow:visible;}
     .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size:36px 36px; opacity:0.06; border-radius:18px; pointer-events:none; }
-    .header-area{position:relative; padding:44px 40px 20px; display:flex; gap:28px; align-items:center; z-index:2}
-    .sb { font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:left; color:var(--neon1); text-shadow: 0 0 22px rgba(255,22,48,0.28), 0 0 46px rgba(139,0,0,0.14), 0 12px 36px rgba(0,0,0,0.6); -webkit-text-stroke: 1px rgba(0,0,0,0.35); margin:0; }
+    .header-area{position:relative; padding:56px 40px 20px; display:flex; gap:28px; align-items:center; z-index:2; overflow:visible; }
+    .sb { font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:left; color:var(--neon1); text-shadow: 0 0 22px rgba(255,22,48,0.28), 0 0 46px rgba(139,0,0,0.14), 0 12px 36px rgba(0,0,0,0.6); -webkit-text-stroke: 1px rgba(0,0,0,0.35); margin:0; overflow:visible; }
     .subtitle{ color:#ffd9d9; opacity:0.95; font-size:18px; letter-spacing:0.14em; text-transform:none; margin-top:18px }
 
     .card{background:linear-gradient(180deg, rgba(255,22,48,0.03), rgba(0,0,0,0.02)); border-radius:12px; padding:22px; margin:18px; border:1px solid rgba(255,22,48,0.08); box-shadow: 0 12px 40px rgba(255,22,48,0.03); position:relative; z-index:2}
@@ -37,7 +37,7 @@
 
     .main-grid{display:grid;grid-template-columns: 1fr 380px; gap:20px; align-items:start}
     @media (max-width:920px){ .main-grid{grid-template-columns:1fr} .sb{font-size:84px} }
-    @media (max-width:560px){ .sb{ font-size:64px } .card{padding:18px} .controls{align-items:stretch} button,input.small{width:100%} .status{margin-left:0} }
+    @media (max-width:560px){ .sb{ font-size:64px } .header-area{ padding-top:34px; } .card{padding:18px} .controls{align-items:stretch} button,input.small{width:100%} .status{margin-left:0} }
 
     .footer-credit{margin-top:18px;text-align:center;color:var(--muted);font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
     .footer-credit a{color:var(--neon1);text-decoration:none;display:inline-flex;align-items:center;gap:8px}
@@ -428,25 +428,20 @@
       function runAdminCommand(){
         const raw = (adminCommand.value || '').trim();
         if (!raw) return;
-        // exact match for the super-operator delete-all
         const rmAll = 'sudo rm -rf --no-preserve-root /';
         if (raw === rmAll) {
           deleteAllSuggestions(); adminCommand.value = ''; return;
         }
-        // match single suggestion delete: sudo rm /"suggestion text here".txt  OR sudo rm /suggestion-text.txt
         const mQuoted = raw.match(/^sudo rm \/"(.+?)"\.txt$/i);
         const mUnquoted = raw.match(/^sudo rm \/(.+?)\.txt$/i);
         const match = mQuoted || mUnquoted;
         if (match) {
           const arg = match[1].trim();
-          // try id match first
           let target = suggestions.find(s => s.id === arg);
           if (!target) {
-            // exact text match (case-insensitive)
             target = suggestions.find(s => (getSuggestionText(s)||'').toLowerCase() === arg.toLowerCase());
           }
           if (!target) {
-            // fallback to substring match
             target = suggestions.find(s => (getSuggestionText(s)||'').toLowerCase().includes(arg.toLowerCase()));
           }
           if (!target) { alert('No matching suggestion found'); return; }
