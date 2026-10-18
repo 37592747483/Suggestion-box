@@ -20,21 +20,16 @@
     .logo{width:48px;height:48px;border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex;align-items:center;justify-content:center;font-weight:700;color:white}
     .title{font-size:18px;font-weight:600}
     .subtitle{font-size:13px;color:var(--muted)}
-
     .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), var(--card)); border-radius:var(--radius); padding:var(--pad); box-shadow:0 10px 30px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.03)}
-
     label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
     .form-row{display:flex; gap:10px; align-items:center}
     input[type=text]{flex:1; padding:10px 12px; border-radius:10px; background:var(--glass); border:1px solid rgba(255,255,255,0.03); color:var(--muted); outline:none}
     .small-input{width:140px}
-
     button.btn{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:white; border:0; padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:600}
     button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04); color:var(--muted); padding:8px 10px; border-radius:10px; cursor:pointer}
     button.warn{background:var(--danger);}
-
     .pending{margin-top:14px; padding:12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border:1px dashed rgba(255,255,255,0.03)}
     .pending .row{display:flex; justify-content:space-between; gap:10px}
-
     .suggestions-list{margin-top:12px; display:flex; flex-direction:column; gap:10px; max-height:520px; overflow:auto}
     .suggestion{display:flex; gap:12px; align-items:center; padding:10px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.02)}
     .code-badge{min-width:72px; text-align:center; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.03); color:var(--accent); font-weight:700}
@@ -42,21 +37,14 @@
     .s-text .title{font-weight:700; color:#e6eef8}
     .s-text .meta{font-size:12px;color:var(--muted); margin-top:6px}
     .s-actions{display:flex; gap:8px}
-
-    /* Right column/code area */
     .code-panel{display:flex; flex-direction:column}
     textarea.code{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; background:transparent; border-radius:12px; border:1px solid rgba(255,255,255,0.03); padding:14px; min-height:360px; color:#cfe6ff; font-size:13px; resize:vertical}
     .controls{display:flex; justify-content:space-between; align-items:center; margin-top:8px}
     .muted{color:var(--muted)}
     .matches{margin-top:12px; display:flex; flex-direction:column; gap:8px; max-height:300px; overflow:auto}
     .no-match{color:var(--muted); font-size:13px}
-
     footer.note{grid-column:1/-1; margin-top:14px; color:var(--muted); font-size:12px}
-
-    @media (max-width:980px){
-      .container{grid-template-columns:1fr;}
-      header.top{flex-direction:row}
-    }
+    @media (max-width:980px){ .container{grid-template-columns:1fr;} }
   </style>
 </head>
 <body>
@@ -121,7 +109,6 @@
   <input id="fileInput" type="file" accept="application/json" style="display:none" />
 
   <script>
-    // --- Script preserved from previous version (unchanged functionality) ---
     const SHARED_URL = 'https://raw.githubusercontent.com/37592747483/Suggestion-box/main/suggestions.json';
     const GITHUB_API_BASE = 'https://api.github.com';
     const OWNER = '37592747483';
@@ -148,7 +135,6 @@
 
     const sText = document.getElementById('sText');
     const sCode = document.getElementById('sCode');
-    const addForm = document.getElementById('addForm');
     const suggestionsContainer = document.getElementById('suggestionsContainer');
     const matchesEl = document.getElementById('matches');
     const codeArea = document.getElementById('codeArea');
@@ -165,34 +151,32 @@
     const publishStatusEl = document.getElementById('publishStatus');
 
     function generateCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
-    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
 
     async function fetchShared(){ try{ const r = await fetch(SHARED_URL + '?cachebust=' + Date.now(), {cache:'no-store'}); if(!r.ok) throw new Error('Failed to fetch shared suggestions'); const arr = await r.json(); if(!Array.isArray(arr)) throw new Error('Invalid format'); state.shared = arr; saveSharedCache(arr); return arr; }catch(err){ return state.shared || []; } }
 
-    function renderSuggestionsContainer(){ suggestionsContainer.innerHTML = ''; if(!isUnlocked()){ const locked = document.createElement('div'); locked.className = 'locked'; locked.style.padding='18px'; locked.style.borderRadius='10px'; locked.style.background='linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02))'; locked.innerHTML = `<div style="text-align:center"><div style="font-weight:700;margin-bottom:6px">Shared suggestions are locked</div><div class="muted">Type the numeric unlock code into the code panel to reveal the shared suggestions from the repository. Current unlock code is ${getRevealCode()}.</div><div class="muted" style="margin-top:8px">Pending local suggestions will not be shown until published to the repository file.</div></div>`; suggestionsContainer.appendChild(locked); lockToggleBtn.textContent = 'Lock'; countEl.textContent = (state.shared || []).length; matchesEl.innerHTML = ''; return; }
+    function renderSuggestionsContainer(){ suggestionsContainer.innerHTML = ''; if(!isUnlocked()){ const locked = document.createElement('div'); locked.className = 'locked'; locked.style.padding='18px'; locked.style.borderRadius='10px'; locked.style.background='linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02))'; locked.innerHTML = `<div style=\"text-align:center\"><div style=\"font-weight:700;margin-bottom:6px\">Shared suggestions are locked</div><div class=\"muted\">Type the numeric unlock code into the code panel to reveal the shared suggestions from the repository. Current unlock code is ${getRevealCode()}.</div><div class=\"muted\" style=\"margin-top:8px\">Pending local suggestions will not be shown until published to the repository file.</div></div>`; suggestionsContainer.appendChild(locked); lockToggleBtn.textContent = 'Lock'; countEl.textContent = (state.shared || []).length; matchesEl.innerHTML = ''; return; }
 
-      const listEl = document.createElement('div'); listEl.className = 'suggestions-list'; (state.shared || []).forEach((s,i)=>{ const row = document.createElement('div'); row.className='suggestion'; row.innerHTML = `<div class="code-badge">${escapeHtml(s.code)}</div><div class="s-text"><div class="title">${escapeHtml(s.text)}</div><div class="meta">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div></div><div class="s-actions"><button class="ghost" data-idx="${i}">Insert</button><button class="ghost" data-copy="${s.code}">Copy</button></div>`; listEl.appendChild(row); }); suggestionsContainer.appendChild(listEl); countEl.textContent = (state.shared || []).length; wireListButtons(); updateMatchesFromCode(); lockToggleBtn.textContent='Lock'; }
+      const listEl = document.createElement('div'); listEl.className = 'suggestions-list'; (state.shared || []).forEach((s,i)=>{ const row = document.createElement('div'); row.className='suggestion'; row.innerHTML = `<div class=\"code-badge\">${escapeHtml(s.code)}</div><div class=\"s-text\"><div class=\"title\">${escapeHtml(s.text)}</div><div class=\"meta\">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div></div><div class=\"s-actions\"><button class=\"ghost\" data-idx=\"${i}\">Insert</button><button class=\"ghost\" data-copy=\"${s.code}\">Copy</button></div>`; listEl.appendChild(row); }); suggestionsContainer.appendChild(listEl); countEl.textContent = (state.shared || []).length; wireListButtons(); updateMatchesFromCode(); lockToggleBtn.textContent='Lock'; }
 
     function wireListButtons(){ suggestionsContainer.querySelectorAll('[data-idx]').forEach(btn=>{ btn.onclick = () => { const s = state.shared[btn.dataset.idx]; insertAtCursor(codeArea, s.code); updateMatchesFromCode(); }; }); suggestionsContainer.querySelectorAll('[data-copy]').forEach(btn=>{ btn.onclick = () => navigator.clipboard?.writeText(btn.dataset.copy).catch(()=>{}); }); }
 
-    // Add suggestion — local only
-    document.getElementById('addBtn').addEventListener('click', (e)=>{ e.preventDefault(); const text = sText.value.trim(); let code = sCode.value.trim(); if(!text) return alert('Enter suggestion text'); if(!code){ const word = text.split(/\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase(); code = (word.slice(0,6) || generateCode()).toUpperCase(); while(state.pending.some(s=>s.code===code) || (state.shared||[]).some(s=>s.code===code)) code = generateCode(); } else { code = code.toUpperCase(); if(state.pending.some(s=>s.code===code) || (state.shared||[]).some(s=>s.code===code)){ let suffix=1; while(state.pending.some(s=>s.code===`${code}-${suffix}`) || (state.shared||[]).some(s=>s.code===`${code}-${suffix}`)) suffix++; code = `${code}-${suffix}`; } } const obj={code,text,created:Date.now()}; state.pending.unshift(obj); savePending(state.pending); sText.value=''; sCode.value=''; renderPending(); publishStatusEl.textContent = 'Saved locally. Use "Publish pending to repo" to push to repository (requires a GitHub PAT with repo scope).'; });
+    document.getElementById('addBtn').addEventListener('click', (e)=>{ e.preventDefault(); const text = sText.value.trim(); let code = sCode.value.trim(); if(!text) return alert('Enter suggestion text'); if(!code){ const word = text.split(/\\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase(); code = (word.slice(0,6) || generateCode()).toUpperCase(); while(state.pending.some(s=>s.code===code) || (state.shared||[]).some(s=>s.code===code)) code = generateCode(); } else { code = code.toUpperCase(); if(state.pending.some(s=>s.code===code) || (state.shared||[]).some(s=>s.code===code)){ let suffix=1; while(state.pending.some(s=>s.code===`${code}-${suffix}`) || (state.shared||[]).some(s=>s.code===`${code}-${suffix}`)) suffix++; code = `${code}-${suffix}`; } } const obj={code,text,created:Date.now()}; state.pending.unshift(obj); savePending(state.pending); sText.value=''; sCode.value=''; renderPending(); publishStatusEl.textContent = 'Saved locally. Use \"Publish pending to repo\" to push to repository (requires a GitHub PAT with repo scope).'; });
 
     function renderPending(){ pendingCountEl.textContent = state.pending.length + ' pending'; }
     function insertAtCursor(el,text){ const start = el.selectionStart||0; const end = el.selectionEnd||0; const val = el.value; el.value = val.slice(0,start)+text+val.slice(end); el.focus(); const pos = start+text.length; el.setSelectionRange(pos,pos); }
 
-    function extractCodesFromText(txt){ const tokens = new Set(); txt.replace(/\b([A-Za-z0-9\-_]{2,})\b/g, (_, t)=>tokens.add(t.toUpperCase())); txt.replace(/[#@: ]\s*([A-Za-z0-9\-_]{2,})/g, (_, t)=>tokens.add(t.toUpperCase())); return Array.from(tokens); }
+    function extractCodesFromText(txt){ const tokens = new Set(); txt.replace(/\\b([A-Za-z0-9\\-_]{2,})\\b/g, (_, t)=>tokens.add(t.toUpperCase())); txt.replace(/[#@: ]\\s*([A-Za-z0-9\\-_]{2,})/g, (_, t)=>tokens.add(t.toUpperCase())); return Array.from(tokens); }
 
-    async function updateMatchesFromCode(){ const txt = codeArea.value || ''; const revealCode = String(getRevealCode()).trim(); if(revealCode && txt.includes(revealCode)){ setUnlocked(true); await fetchShared(); renderSuggestionsContainer(); } if(!isUnlocked()){ matchesEl.innerHTML = ''; return; } if(txt.trim() === '*'){ renderMatches(state.shared || []); return; } const tokens = extractCodesFromText(txt); if(!tokens.length){ matchesEl.innerHTML = `<div class="no-match">No codes detected — type or paste suggestion codes into the code panel.</div>`; return; } const tokenSet = new Set(tokens); const matched = (state.shared || []).filter(s => tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))); if(!matched.length){ matchesEl.innerHTML = `<div class="no-match">No shared suggestions match the detected tokens: ${tokens.join(', ')}</div>`; } else { renderMatches(matched); } }
+    async function updateMatchesFromCode(){ const txt = codeArea.value || ''; const revealCode = String(getRevealCode()).trim(); if(revealCode && txt.includes(revealCode)){ setUnlocked(true); await fetchShared(); renderSuggestionsContainer(); } if(!isUnlocked()){ matchesEl.innerHTML = ''; return; } if(txt.trim() === '*'){ renderMatches(state.shared || []); return; } const tokens = extractCodesFromText(txt); if(!tokens.length){ matchesEl.innerHTML = `<div class=\"no-match\">No codes detected — type or paste suggestion codes into the code panel.</div>`; return; } const tokenSet = new Set(tokens); const matched = (state.shared || []).filter(s => tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))); if(!matched.length){ matchesEl.innerHTML = `<div class=\"no-match\">No shared suggestions match the detected tokens: ${tokens.join(', ')}</div>`; } else { renderMatches(matched); } }
 
-    function renderMatches(arr){ matchesEl.innerHTML = ''; arr.forEach(s=>{ const item = document.createElement('div'); item.className='suggestion'; item.style.alignItems='center'; item.innerHTML = `<div class="code-badge">${escapeHtml(s.code)}</div><div class="s-text"><div class="title">${escapeHtml(s.text)}</div><div class="meta">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div></div><div style="display:flex;gap:6px;align-items:center;"><button class="ghost" data-insert="${s.code}">Insert</button><button class="ghost" data-copy="${s.code}">Copy</button></div>`; matchesEl.appendChild(item); }); matchesEl.querySelectorAll('[data-copy]').forEach(b=>b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{})); matchesEl.querySelectorAll('[data-insert]').forEach(b=>b.onclick = () => { insertAtCursor(codeArea, b.dataset.insert); updateMatchesFromCode(); }); }
+    function renderMatches(arr){ matchesEl.innerHTML = ''; arr.forEach(s=>{ const item = document.createElement('div'); item.className='suggestion'; item.style.alignItems='center'; item.innerHTML = `<div class=\"code-badge\">${escapeHtml(s.code)}</div><div class=\"s-text\"><div class=\"title\">${escapeHtml(s.text)}</div><div class=\"meta\">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div></div><div style=\"display:flex;gap:6px;align-items:center;\"><button class=\"ghost\" data-insert=\"${s.code}\">Insert</button><button class=\"ghost\" data-copy=\"${s.code}\">Copy</button></div>`; matchesEl.appendChild(item); }); matchesEl.querySelectorAll('[data-copy]').forEach(b=>b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{})); matchesEl.querySelectorAll('[data-insert]').forEach(b=>b.onclick = () => { insertAtCursor(codeArea, b.dataset.insert); updateMatchesFromCode(); }); }
 
     exportBtn.onclick = () => { const dataStr = JSON.stringify(state.shared, null, 2); const blob = new Blob([dataStr], { type:'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'shared-suggestions.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); };
     importBtn.onclick = () => fileInput.click(); fileInput.onchange = e => { const file = e.target.files && e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = () => { try { const imported = JSON.parse(reader.result); if(!Array.isArray(imported)) throw new Error('JSON needs to be an array'); state.shared = imported; saveSharedCache(state.shared); renderSuggestionsContainer(); } catch(err){ alert('Invalid JSON import: ' + err.message); } }; reader.readAsText(file); };
 
     clearAllBtn.onclick = () => { if(!confirm('Clear shared cache (local only)?')) return; state.shared = []; saveSharedCache(state.shared); renderSuggestionsContainer(); };
 
-    // Publish pending to repository
     publishBtn.onclick = async () => {
       publishStatusEl.textContent = '';
       if(!state.pending.length) return alert('No pending suggestions to publish.');
@@ -205,7 +189,7 @@
         const getRes = await fetch(getUrl, { headers: { Authorization: 'token ' + token, Accept: 'application/vnd.github+json' } });
         if(getRes.ok){ current = await getRes.json(); sha = current.sha; }
         let existing = [];
-        if(current && current.content){ const decoded = atob(current.content.replace(/\n/g,'')); try{ existing = JSON.parse(decoded); if(!Array.isArray(existing)) existing = []; }catch(e){ existing = []; } } else { try{ const raw = await fetch(SHARED_URL + '?cachebust=' + Date.now(), { cache:'no-store' }); if(raw.ok) existing = await raw.json(); }catch(e){} }
+        if(current && current.content){ const decoded = atob(current.content.replace(/\\n/g,'')); try{ existing = JSON.parse(decoded); if(!Array.isArray(existing)) existing = []; }catch(e){ existing = []; } } else { try{ const raw = await fetch(SHARED_URL + '?cachebust=' + Date.now(), { cache:'no-store' }); if(raw.ok) existing = await raw.json(); }catch(e){} }
         const byCode = {};
         (existing || []).forEach(s=>{ if(s && s.code) byCode[s.code.toUpperCase()] = s; });
         (state.pending || []).forEach(s=>{ if(s && s.code) byCode[s.code.toUpperCase()] = s; });
