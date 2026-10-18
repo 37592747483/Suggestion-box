@@ -42,8 +42,9 @@
     @media (max-width:560px){ .sb{ font-size:64px } .card{padding:18px} .controls{align-items:stretch} button,input.small{width:100%} .status{margin-left:0} }
 
     /* Footer credit */
-    .footer-credit{margin-top:18px;text-align:center;color:var(--muted);font-size:12px}
-    .footer-credit a{color:var(--neon1);text-decoration:none}
+    .footer-credit{margin-top:18px;text-align:center;color:var(--muted);font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
+    .footer-credit a{color:var(--neon1);text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+    .firebase-logo{width:18px;height:18px;display:inline-block}
   </style>
 </head>
 <body>
@@ -81,7 +82,21 @@
         </div>
       </div>
 
-      <div class="footer-credit">Data storage powered by <a href="https://firebase.google.com/" target="_blank" rel="noopener">Firebase</a> (Firestore)</div>
+      <div class="footer-credit">
+        <a href="https://firebase.google.com/" target="_blank" rel="noopener">
+          <svg class="firebase-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <!-- Simplified Firebase flame mark (brand-like) -->
+            <defs>
+              <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0%" stop-color="#FFCA28"/>
+                <stop offset="100%" stop-color="#FF6F00"/>
+              </linearGradient>
+            </defs>
+            <path fill="url(#g1)" d="M12.5 2L9 13l3.5 9 3.5-9L12.5 2z" />
+          </svg>
+          <span>Powered by Firebase Firestore</span>
+        </a>
+      </div>
     </div>
   </div>
 
