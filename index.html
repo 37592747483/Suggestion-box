@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SB</title>
   <style>
-    :root{ --bg:#050507; --neon1:#ff1630; --neon2:#8b0000; --glow: 0 0 18px rgba(255,22,48,0.14), 0 0 48px rgba(255,22,48,0.06); }
+    :root{ --bg:#050507; --neon1:#ff1630; --neon2:#8b0000; }
     html,body{height:100%;margin:0}
     body{
       background: radial-gradient(1200px 400px at 10% 10%, rgba(139,0,0,0.12), transparent 8%),
@@ -15,9 +15,7 @@
       display:flex; align-items:center; justify-content:center; overflow:hidden;
     }
     .scene{position:relative; width:min(820px,92vw); height:min(420px,70vh); display:flex; align-items:center; justify-content:center; border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03);}
-    /* subtle grid lines */
     .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size: 60px 60px, 60px 60px; opacity:0.06; }
-
     .sb {
       position:relative; z-index:5; font-weight:800; letter-spacing:0.06em; font-size:88px; line-height:1; text-align:center;
       color:var(--neon1); text-shadow: 0 0 18px rgba(255,22,48,0.25), 0 0 36px rgba(139,0,0,0.12), 0 8px 30px rgba(0,0,0,0.6);
@@ -25,16 +23,9 @@
       transform:translateY(-6px);
     }
     .sb::after{ content:''; position:absolute; inset:0; filter:blur(28px); opacity:0.55; background: linear-gradient(90deg, rgba(255,22,48,0.35), rgba(139,0,0,0.25)); mix-blend-mode:screen; border-radius:12px; }
-
-    .subtitle{ position:relative; z-index:6; margin-top:12px; color:#fbeaea; opacity:0.85; font-size:16px; }
-
-    /* faint animated scanline */
     .scan{ position:absolute; left:-30%; top: -40%; width:160%; height:260%; transform:rotate(25deg); background: linear-gradient(180deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.03) 48%, rgba(255,255,255,0.00) 100%); opacity:0.06; animation: sweep 6s linear infinite; }
     @keyframes sweep{ from{transform: translateX(-20%) rotate(25deg);} to{transform: translateX(20%) rotate(25deg);} }
-
-    /* small footer */
     .note{ position:absolute; bottom:14px; left:16px; font-size:12px; color:#f4c7c8; opacity:0.6; z-index:6 }
-
     @media (max-width:560px){ .sb{ font-size:48px } .scene{height:300px} }
   </style>
 </head>
@@ -44,9 +35,8 @@
     <div class="scan" aria-hidden="true"></div>
     <div style="text-align:center;">
       <div class="sb">SB</div>
-      <div class="subtitle">Main code — repository</div>
     </div>
-    <div class="note">SB • main code</div>
+    <div class="note">SB</div>
   </div>
 </body>
 </html>
