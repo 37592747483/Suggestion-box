@@ -15,8 +15,8 @@
       display:flex; align-items:center; justify-content:center; overflow:auto; padding:48px 20px;
     }
     .scene{position:relative; width:min(980px,96vw); border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); overflow:visible;}
-    .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size:36px 36px; opacity:0.06; border-radius:18px }
-    .header-area{position:relative; padding:44px 40px 20px; display:flex; gap:28px; align-items:center}
+    .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size:36px 36px; opacity:0.06; border-radius:18px; pointer-events:none; }
+    .header-area{position:relative; padding:44px 40px 20px; display:flex; gap:28px; align-items:center; z-index:2}
     .sb {
       font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:left;
       color:var(--neon1); text-shadow: 0 0 22px rgba(255,22,48,0.28), 0 0 46px rgba(139,0,0,0.14), 0 12px 36px rgba(0,0,0,0.6);
@@ -25,24 +25,21 @@
     }
     .subtitle{ color:#ffd9d9; opacity:0.95; font-size:18px; letter-spacing:0.14em; text-transform:none; margin-top:18px }
 
-    /* Suggestion card */
-    .card{background:linear-gradient(180deg, rgba(255,22,48,0.03), rgba(0,0,0,0.02)); border-radius:12px; padding:22px; margin:18px; border:1px solid rgba(255,22,48,0.08); box-shadow: 0 12px 40px rgba(255,22,48,0.03)}
+    .card{background:linear-gradient(180deg, rgba(255,22,48,0.03), rgba(0,0,0,0.02)); border-radius:12px; padding:22px; margin:18px; border:1px solid rgba(255,22,48,0.08); box-shadow: 0 12px 40px rgba(255,22,48,0.03); position:relative; z-index:2}
     .card h2{margin:0;color:var(--neon1);font-size:20px}
-    textarea{width:100%;min-height:110px;padding:12px;border-radius:10px;border:1px solid rgba(255,22,48,0.08);background:rgba(0,0,0,0.25);color:#fff;outline:none;resize:vertical}
-    .controls{display:flex;gap:12px;margin-top:12px;align-items:center}
-    button{background:linear-gradient(180deg,var(--neon1),#b0002a);border:none;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(255,22,48,0.14)}
-    input.small{width:120px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,22,48,0.08);background:transparent;color:#fff;text-align:center}
+    textarea{width:100%;min-height:110px;padding:12px;border-radius:10px;border:1px solid rgba(255,22,48,0.08);background:rgba(0,0,0,0.25);color:#fff;outline:none;resize:vertical; font:inherit; -webkit-appearance:none; appearance:none; }
+    .controls{display:flex;gap:12px;margin-top:12px;align-items:center;flex-wrap:wrap}
+    button{background:linear-gradient(180deg,var(--neon1),#b0002a);border:none;color:#fff;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(255,22,48,0.14); min-height:44px; min-width:44px; touch-action:manipulation; }
+    input.small{width:120px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,22,48,0.08);background:transparent;color:#fff;text-align:center; min-height:44px; font:inherit; }
     .panel{margin-top:14px;border-radius:10px;padding:12px;background:linear-gradient(180deg, rgba(255,22,48,0.02), rgba(0,0,0,0.25));border:1px solid rgba(255,22,48,0.04)}
-    /* ensure hidden class actually hides elements */
     .hidden{display:none !important}
     ul{list-style:none;padding:0;margin:0;max-height:220px;overflow:auto}
-    li{padding:8px 10px;border-radius:8px;margin-bottom:8px;background:linear-gradient(90deg, rgba(255,22,48,0.02), rgba(0,0,0,0.18));border:1px solid rgba(255,22,48,0.03);}
+    li{padding:8px 10px;border-radius:8px;margin-bottom:8px;background:linear-gradient(90deg, rgba(255,22,48,0.02), rgba(0,0,0,0.18));border:1px solid rgba(255,22,48,0.03); word-break:break-word; }
     .status{margin-left:8px;color:var(--muted);font-size:13px}
 
-    /* Layout tweaks */
     .main-grid{display:grid;grid-template-columns: 1fr 380px; gap:20px; align-items:start}
     @media (max-width:920px){ .main-grid{grid-template-columns:1fr} .sb{font-size:84px} }
-    @media (max-width:560px){ .sb{ font-size:64px } }
+    @media (max-width:560px){ .sb{ font-size:64px } .card{padding:18px} .controls{align-items:stretch} button,input.small{width:100%} .status{margin-left:0} }
   </style>
 </head>
 <body>
@@ -85,18 +82,7 @@
 
   <script>
     console.log('Suggestion-box script loaded');
-    /*
-      Persistence behavior:
-      - If you want cross-device sync, create a Firebase project + Web app and paste the firebase config object as window.__FIREBASE_CONFIG__ below.
-      - If no Firebase config is provided, the page uses localStorage and will only sync on the same browser/device.
 
-      How to add Firebase config:
-      1) Go to console.firebase.google.com, create a project, add a Web App, copy the config.
-      2) Paste it above where indicated, e.g.:
-         window.__FIREBASE_CONFIG__ = { apiKey: '...', authDomain: '...', projectId: '...', ... };
-    */
-
-    // Paste Firebase config here if you want Firestore syncing across devices
     window.__FIREBASE_CONFIG__ = {
       apiKey: "AIzaSyD9tiDJ2ZOlWfyKRuGQVYCkNHkcAngRnzk",
       authDomain: "suggestion-box-17a66.firebaseapp.com",
@@ -107,132 +93,133 @@
       measurementId: "G-T6SNYFR980"
     };
 
-    const firebaseConfig = window.__FIREBASE_CONFIG__ || null;
-    let useFirestore = false;
-    let db = null;
+    window.addEventListener('DOMContentLoaded', () => {
+      const firebaseConfig = window.__FIREBASE_CONFIG__ || null;
+      let useFirestore = false;
+      let db = null;
 
-    const suggestionInput = document.getElementById('suggestionInput');
-    const addBtn = document.getElementById('addBtn');
-    const codeInput = document.getElementById('codeInput');
-    const suggestionsPanel = document.getElementById('suggestionsPanel');
-    const suggestionsList = document.getElementById('suggestionsList');
-    const status = document.getElementById('status');
+      const suggestionInput = document.getElementById('suggestionInput');
+      const addBtn = document.getElementById('addBtn');
+      const codeInput = document.getElementById('codeInput');
+      const suggestionsPanel = document.getElementById('suggestionsPanel');
+      const suggestionsList = document.getElementById('suggestionsList');
+      const status = document.getElementById('status');
 
-    console.log('elements:', { suggestionInput: !!suggestionInput, addBtn: !!addBtn, codeInput: !!codeInput, suggestionsPanel: !!suggestionsPanel });
+      console.log('elements:', { suggestionInput: !!suggestionInput, addBtn: !!addBtn, codeInput: !!codeInput, suggestionsPanel: !!suggestionsPanel });
 
-    let suggestions = [];
+      let suggestions = [];
 
-    if (firebaseConfig) {
-      loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js')
-        .then(() => loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'))
-        .then(() => {
+      if (firebaseConfig) {
+        loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js')
+          .then(() => loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'))
+          .then(() => {
+            try {
+              firebase.initializeApp(firebaseConfig);
+              db = firebase.firestore();
+              useFirestore = true;
+              showStatus('Using Firebase Firestore');
+              loadSuggestions();
+            } catch (err) {
+              console.error('Firebase init error', err);
+              showStatus('Firebase init failed — using localStorage');
+              loadSuggestions();
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to load Firebase scripts', err);
+            showStatus('Failed to load Firebase — using localStorage');
+            loadSuggestions();
+          });
+      } else {
+        showStatus('Using localStorage');
+        loadSuggestions();
+      }
+
+      function loadScript(src){
+        return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+      }
+
+      async function loadSuggestions(){
+        if (useFirestore && db) {
           try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            useFirestore = true;
-            showStatus('Using Firebase Firestore');
-            loadSuggestions();
+            const snapshot = await db.collection('suggestions').orderBy('timestamp', 'asc').get();
+            suggestions = snapshot.docs.map(d => (d.data() && d.data().text) || '').filter(Boolean);
           } catch (err) {
-            console.error('Firebase init error', err);
-            showStatus('Firebase init failed — using localStorage');
-            loadSuggestions();
+            console.error('Failed to read Firestore', err);
+            showStatus('Failed to read Firestore — using local cache');
+            const raw = localStorage.getItem('suggestions');
+            suggestions = raw ? JSON.parse(raw) : [];
           }
-        })
-        .catch((err) => {
-          console.error('Failed to load Firebase scripts', err);
-          showStatus('Failed to load Firebase — using localStorage');
-          loadSuggestions();
-        });
-    } else {
-      showStatus('Using localStorage');
-      loadSuggestions();
-    }
-
-    function loadScript(src){
-      return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
-    }
-
-    async function loadSuggestions(){
-      if (useFirestore && db) {
-        try {
-          const snapshot = await db.collection('suggestions').orderBy('timestamp', 'asc').get();
-          suggestions = snapshot.docs.map(d => (d.data() && d.data().text) || '').filter(Boolean);
-        } catch (err) {
-          console.error('Failed to read Firestore', err);
-          showStatus('Failed to read Firestore — using local cache');
+        } else {
           const raw = localStorage.getItem('suggestions');
           suggestions = raw ? JSON.parse(raw) : [];
         }
-      } else {
-        const raw = localStorage.getItem('suggestions');
-        suggestions = raw ? JSON.parse(raw) : [];
+        renderSuggestions();
       }
-      renderSuggestions();
-    }
 
-    async function saveSuggestion(text){
-      if (useFirestore && db) {
-        try {
-          await db.collection('suggestions').add({ text, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        } catch (err) {
-          console.error('Failed to write to Firestore', err);
-          showStatus('Failed to save to Firestore — saved locally');
+      async function saveSuggestion(text){
+        if (useFirestore && db) {
+          try {
+            await db.collection('suggestions').add({ text, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+          } catch (err) {
+            console.error('Failed to write to Firestore', err);
+            showStatus('Failed to save to Firestore — saved locally');
+            saveLocal(text);
+          }
+        } else {
           saveLocal(text);
         }
-      } else {
-        saveLocal(text);
+        await loadSuggestions();
       }
-      await loadSuggestions();
-    }
 
-    function saveLocal(text){
-      const raw = localStorage.getItem('suggestions');
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.push(text);
-      localStorage.setItem('suggestions', JSON.stringify(arr));
-    }
-
-    function renderSuggestions(){
-      suggestionsList.innerHTML = '';
-      if (!suggestions.length) {
-        const li = document.createElement('li'); li.textContent = 'No suggestions yet.'; suggestionsList.appendChild(li); return;
+      function saveLocal(text){
+        const raw = localStorage.getItem('suggestions');
+        const arr = raw ? JSON.parse(raw) : [];
+        arr.push(text);
+        localStorage.setItem('suggestions', JSON.stringify(arr));
       }
-      suggestions.forEach(s => {
-        const li = document.createElement('li'); li.textContent = s; suggestionsList.appendChild(li);
+
+      function renderSuggestions(){
+        suggestionsList.innerHTML = '';
+        if (!suggestions.length) {
+          const li = document.createElement('li'); li.textContent = 'No suggestions yet.'; suggestionsList.appendChild(li); return;
+        }
+        suggestions.forEach(s => {
+          const li = document.createElement('li'); li.textContent = s; suggestionsList.appendChild(li);
+        });
+      }
+
+      function showStatus(msg){ if (!status) return; status.textContent = msg; setTimeout(()=>{ if (status.textContent === msg) status.textContent = '' }, 2200); }
+
+      addBtn.addEventListener('click', async ()=>{
+        console.log('addBtn clicked');
+        const text = suggestionInput.value.trim();
+        if (!text) { showStatus('Please enter a suggestion'); return; }
+        if (suggestions.includes(text)) { showStatus('Suggestion already exists'); suggestionInput.value = ''; return; }
+        showStatus('Saving...');
+        await saveSuggestion(text);
+        suggestionInput.value = '';
+        showStatus('Saved');
       });
-    }
 
-    function showStatus(msg){ status.textContent = msg; setTimeout(()=>{ if (status.textContent === msg) status.textContent = '' }, 2200); }
+      suggestionInput.addEventListener('keydown', (e)=>{ if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { addBtn.click(); } });
 
-    addBtn.addEventListener('click', async ()=>{
-      console.log('addBtn clicked');
-      const text = suggestionInput.value.trim();
-      if (!text) { showStatus('Please enter a suggestion'); return; }
-      if (suggestions.includes(text)) { showStatus('Suggestion already exists'); suggestionInput.value = ''; return; }
-      showStatus('Saving...');
-      await saveSuggestion(text);
-      suggestionInput.value = '';
-      showStatus('Saved');
+      codeInput.addEventListener('input', (e)=>{
+        const v = e.target.value;
+        if (v === '13') {
+          suggestionsPanel.classList.remove('hidden');
+          loadSuggestions();
+        } else {
+          suggestionsPanel.classList.add('hidden');
+        }
+      });
+
+      suggestionsList.addEventListener('click', (e)=>{
+        const li = e.target.closest('li'); if (!li) return;
+        const text = li.textContent || '';
+        navigator.clipboard?.writeText(text).then(()=> showStatus('Copied to clipboard')).catch(()=>{});
+      });
     });
-
-    suggestionInput.addEventListener('keydown', (e)=>{ if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { addBtn.click(); } });
-
-    codeInput.addEventListener('input', (e)=>{
-      const v = e.target.value;
-      if (v === '13') {
-        suggestionsPanel.classList.remove('hidden');
-        loadSuggestions();
-      } else {
-        suggestionsPanel.classList.add('hidden');
-      }
-    });
-
-    suggestionsList.addEventListener('click', (e)=>{
-      const li = e.target.closest('li'); if (!li) return;
-      const text = li.textContent || '';
-      navigator.clipboard?.writeText(text).then(()=> showStatus('Copied to clipboard')).catch(()=>{});
-    });
-
   </script>
 </body>
 </html>
