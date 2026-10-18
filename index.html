@@ -3,40 +3,222 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SB</title>
+  <title>SB — Suggestion Box</title>
   <style>
-    :root{ --bg:#050507; --neon1:#ff1630; --neon2:#8b0000; }
+    :root{ --bg:#050507; --neon1:#ff1630; --neon2:#8b0000; --muted:#d6bdbd }
     html,body{height:100%;margin:0}
     body{
       background: radial-gradient(1200px 400px at 10% 10%, rgba(139,0,0,0.12), transparent 8%),
                   radial-gradient(800px 300px at 90% 90%, rgba(255,22,48,0.06), transparent 6%),
                   linear-gradient(180deg,#000000 0%, #070607 60%);
       color:#fff; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      display:flex; align-items:center; justify-content:center; overflow:hidden;
+      display:flex; align-items:center; justify-content:center; overflow:auto; padding:48px 20px;
     }
-    .scene{position:relative; width:min(820px,92vw); height:min(420px,70vh); display:flex; align-items:center; justify-content:center; border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03);}
-    .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size: 60px 60px, 60px 60px; opacity:0.06; }
+    .scene{position:relative; width:min(980px,96vw); border-radius:18px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); overflow:visible;}
+    .grid { position:absolute; inset:0; background-image: linear-gradient(transparent 94%, rgba(255,255,255,0.02) 96%), linear-gradient(90deg, transparent 94%, rgba(255,255,255,0.02) 96%); background-size:36px 36px; opacity:0.06; border-radius:18px }
+    .header-area{position:relative; padding:44px 40px 20px; display:flex; gap:28px; align-items:center}
     .sb {
-      position:relative; z-index:5; font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:center;
+      font-weight:900; letter-spacing:0.06em; font-size:110px; line-height:1; text-align:left;
       color:var(--neon1); text-shadow: 0 0 22px rgba(255,22,48,0.28), 0 0 46px rgba(139,0,0,0.14), 0 12px 36px rgba(0,0,0,0.6);
       -webkit-text-stroke: 1px rgba(0,0,0,0.35);
-      transform:translateY(-6px);
+      margin:0;
     }
-    .sb::after{ content:''; position:absolute; inset:0; filter:blur(28px); opacity:0.55; background: linear-gradient(90deg, rgba(255,22,48,0.35), rgba(139,0,0,0.25)); mix-blend-mode:screen; border-radius:12px; }
-    .subtitle{ position:relative; z-index:6; margin-top:14px; color:#ffd9d9; opacity:0.95; font-size:18px; letter-spacing:0.14em; text-transform:none; }
-    .scan{ position:absolute; left:-30%; top: -40%; width:160%; height:260%; transform:rotate(25deg); background: linear-gradient(180deg, rgba(255,255,255,0.00) 0%, rgba(255,255,255,0.03) 48%, rgba(255,255,255,0.00) 100%); opacity:0.06; animation: sweep 6s linear infinite; }
-    @keyframes sweep{ from{transform: translateX(-20%) rotate(25deg);} to{transform: translateX(20%) rotate(25deg);} }
-    @media (max-width:560px){ .sb{ font-size:64px } .scene{height:300px} .subtitle{font-size:14px} }
+    .subtitle{ color:#ffd9d9; opacity:0.95; font-size:18px; letter-spacing:0.14em; text-transform:none; margin-top:18px }
+
+    /* Suggestion card */
+    .card{background:linear-gradient(180deg, rgba(255,22,48,0.03), rgba(0,0,0,0.02)); border-radius:12px; padding:22px; margin:18px; border:1px solid rgba(255,22,48,0.08); box-shadow: 0 12px 40px rgba(255,22,48,0.03)}
+    .card h2{margin:0;color:var(--neon1);font-size:20px}
+    textarea{width:100%;min-height:110px;padding:12px;border-radius:10px;border:1px solid rgba(255,22,48,0.08);background:rgba(0,0,0,0.25);color:#fff;outline:none;resize:vertical}
+    .controls{display:flex;gap:12px;margin-top:12px;align-items:center}
+    button{background:linear-gradient(180deg,var(--neon1),#b0002a);border:none;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(255,22,48,0.14)}
+    input.small{width:120px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,22,48,0.08);background:transparent;color:#fff;text-align:center}
+    .panel{margin-top:14px;border-radius:10px;padding:12px;background:linear-gradient(180deg, rgba(255,22,48,0.02), rgba(0,0,0,0.25));border:1px solid rgba(255,22,48,0.04)}
+    ul{list-style:none;padding:0;margin:0;max-height:220px;overflow:auto}
+    li{padding:8px 10px;border-radius:8px;margin-bottom:8px;background:linear-gradient(90deg, rgba(255,22,48,0.02), rgba(0,0,0,0.18));border:1px solid rgba(255,22,48,0.03);}
+    .status{margin-left:8px;color:var(--muted);font-size:13px}
+
+    /* Layout tweaks */
+    .main-grid{display:grid;grid-template-columns: 1fr 380px; gap:20px; align-items:start}
+    @media (max-width:920px){ .main-grid{grid-template-columns:1fr} .sb{font-size:84px} }
+    @media (max-width:560px){ .sb{ font-size:64px } }
   </style>
 </head>
 <body>
-  <div class="scene" role="img" aria-label="Futuristic black and red neon background with SB title">
+  <div class="scene">
     <div class="grid" aria-hidden="true"></div>
-    <div class="scan" aria-hidden="true"></div>
-    <div style="text-align:center;">
-      <div class="sb">SB</div>
-      <div class="subtitle">suggestion box</div>
+    <div class="header-area">
+      <div>
+        <div class="sb">SB</div>
+        <div class="subtitle">suggestion box</div>
+      </div>
+    </div>
+
+    <div style="padding: 0 40px 40px">
+      <div class="main-grid">
+        <div class="card">
+          <h2><span style="display:inline-block;width:10px;height:14px;background:var(--neon1);margin-right:8px;border-radius:2px;vertical-align:middle"></span> Add a suggestion</h2>
+          <p style="color:var(--muted);margin:8px 0 12px;font-size:13px">Write your suggestion below (max 400 chars). Press the Add button or Ctrl/Cmd+Enter to submit.</p>
+          <textarea id="suggestionInput" placeholder="Write your suggestion..." maxlength="400"></textarea>
+          <div class="controls">
+            <button id="addBtn">Add Suggestion</button>
+            <div class="status" id="status" aria-live="polite"></div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:10px">Suggestions are stored persistently. To enable cross-device sync, add Firebase config in the script as described in the comments.</p>
+        </div>
+
+        <div class="card">
+          <h2><span style="display:inline-block;width:10px;height:14px;background:var(--neon1);margin-right:8px;border-radius:2px;vertical-align:middle"></span> Quick access</h2>
+          <p style="color:var(--muted);margin:8px 0 12px;font-size:13px">Type the numbers <strong>1</strong> then <strong>3</strong> into the small box to reveal stored suggestions. Newly added suggestions won't be duplicated.</p>
+          <input id="codeInput" class="small" type="text" maxlength="2" placeholder="Code" aria-label="Code input" />
+
+          <div id="suggestionsPanel" class="panel hidden">
+            <strong>Suggestions</strong>
+            <ul id="suggestionsList" aria-live="polite"></ul>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px">Click a suggestion to copy it to clipboard.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+
+  <script>
+    /*
+      Persistence behavior:
+      - If you want cross-device sync, create a Firebase project + Web app and paste the firebase config object as window.__FIREBASE_CONFIG__ below.
+      - If no Firebase config is provided, the page uses localStorage and will only sync on the same browser/device.
+
+      How to add Firebase config:
+      1) Go to console.firebase.google.com, create a project, add a Web App, copy the config.
+      2) Paste it above where indicated, e.g.:
+         window.__FIREBASE_CONFIG__ = { apiKey: '...', authDomain: '...', projectId: '...', ... };
+    */
+
+    // Paste Firebase config here if you want Firestore syncing across devices, e.g.:
+    // window.__FIREBASE_CONFIG__ = { apiKey: '...', authDomain: '...', projectId: '...', storageBucket:'', messagingSenderId:'', appId:'' };
+
+    const firebaseConfig = window.__FIREBASE_CONFIG__ || null;
+    let useFirestore = false;
+    let db = null;
+
+    const suggestionInput = document.getElementById('suggestionInput');
+    const addBtn = document.getElementById('addBtn');
+    const codeInput = document.getElementById('codeInput');
+    const suggestionsPanel = document.getElementById('suggestionsPanel');
+    const suggestionsList = document.getElementById('suggestionsList');
+    const status = document.getElementById('status');
+
+    let suggestions = [];
+
+    if (firebaseConfig) {
+      loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js')
+        .then(() => loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js'))
+        .then(() => {
+          try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            useFirestore = true;
+            showStatus('Using Firebase Firestore');
+            loadSuggestions();
+          } catch (err) {
+            console.error('Firebase init error', err);
+            showStatus('Firebase init failed — using localStorage');
+            loadSuggestions();
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load Firebase scripts', err);
+          showStatus('Failed to load Firebase — using localStorage');
+          loadSuggestions();
+        });
+    } else {
+      showStatus('Using localStorage');
+      loadSuggestions();
+    }
+
+    function loadScript(src){
+      return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    }
+
+    async function loadSuggestions(){
+      if (useFirestore && db) {
+        try {
+          const snapshot = await db.collection('suggestions').orderBy('timestamp', 'asc').get();
+          suggestions = snapshot.docs.map(d => (d.data() && d.data().text) || '').filter(Boolean);
+        } catch (err) {
+          console.error('Failed to read Firestore', err);
+          showStatus('Failed to read Firestore — using local cache');
+          const raw = localStorage.getItem('suggestions');
+          suggestions = raw ? JSON.parse(raw) : [];
+        }
+      } else {
+        const raw = localStorage.getItem('suggestions');
+        suggestions = raw ? JSON.parse(raw) : [];
+      }
+      renderSuggestions();
+    }
+
+    async function saveSuggestion(text){
+      if (useFirestore && db) {
+        try {
+          await db.collection('suggestions').add({ text, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        } catch (err) {
+          console.error('Failed to write to Firestore', err);
+          showStatus('Failed to save to Firestore — saved locally');
+          saveLocal(text);
+        }
+      } else {
+        saveLocal(text);
+      }
+      await loadSuggestions();
+    }
+
+    function saveLocal(text){
+      const raw = localStorage.getItem('suggestions');
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.push(text);
+      localStorage.setItem('suggestions', JSON.stringify(arr));
+    }
+
+    function renderSuggestions(){
+      suggestionsList.innerHTML = '';
+      if (!suggestions.length) {
+        const li = document.createElement('li'); li.textContent = 'No suggestions yet.'; suggestionsList.appendChild(li); return;
+      }
+      suggestions.forEach(s => {
+        const li = document.createElement('li'); li.textContent = s; suggestionsList.appendChild(li);
+      });
+    }
+
+    function showStatus(msg){ status.textContent = msg; setTimeout(()=>{ if (status.textContent === msg) status.textContent = '' }, 2200); }
+
+    addBtn.addEventListener('click', async ()=>{
+      const text = suggestionInput.value.trim();
+      if (!text) { showStatus('Please enter a suggestion'); return; }
+      if (suggestions.includes(text)) { showStatus('Suggestion already exists'); suggestionInput.value = ''; return; }
+      showStatus('Saving...');
+      await saveSuggestion(text);
+      suggestionInput.value = '';
+      showStatus('Saved');
+    });
+
+    suggestionInput.addEventListener('keydown', (e)=>{ if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { addBtn.click(); } });
+
+    codeInput.addEventListener('input', (e)=>{
+      const v = e.target.value;
+      if (v === '13') {
+        suggestionsPanel.classList.remove('hidden');
+        loadSuggestions();
+      } else {
+        suggestionsPanel.classList.add('hidden');
+      }
+    });
+
+    suggestionsList.addEventListener('click', (e)=>{
+      const li = e.target.closest('li'); if (!li) return;
+      const text = li.textContent || '';
+      navigator.clipboard?.writeText(text).then(()=> showStatus('Copied to clipboard')).catch(()=>{});
+    });
+
+  </script>
 </body>
 </html>
