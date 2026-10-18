@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Suggestion box — shared unlock</title>
+  <title>Suggestion box — shared unlock & publish</title>
   <style>
     :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111; }
     body { margin: 20px; background:#f6f7fb; }
@@ -30,6 +30,7 @@
     .locked { display:flex; align-items:center; justify-content:center; padding:18px; border:2px dashed #e5e7eb; border-radius:8px; color:#6b7280; background:#fbfbfd; min-height:120px; text-align:center; }
     .settings { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
     .pending { margin-top:8px; padding:10px; border:1px dashed #e6e9f2; border-radius:8px; background:#ffffff; }
+    .status { margin-top:8px; font-size:13px; color:#374151; }
     @media (max-width:900px) { .wrap { flex-direction:column; } }
   </style>
 </head>
@@ -56,9 +57,10 @@
         <div style="font-weight:600">Pending local suggestions (not shared)</div>
         <div class="small" id="pendingCount">0 pending</div>
         <div style="margin-top:8px; display:flex; gap:8px;">
-          <button id="publishBtn" class="ghost">Request publish (open issue)</button>
+          <button id="publishBtn" class="ghost">Publish pending to repo</button>
           <button id="clearPending" class="ghost">Clear pending</button>
         </div>
+        <div class="status" id="publishStatus"></div>
       </div>
 
       <div id="suggestionsContainer">
@@ -88,6 +90,10 @@
     // Shared suggestions are read from the repo raw URL so all users who open the page and type the unlock
     // code will see the same shared list (once that file is updated in the repository).
     const SHARED_URL = 'https://raw.githubusercontent.com/37592747483/Suggestion-box/main/suggestions.json';
+    const GITHUB_API_BASE = 'https://api.github.com';
+    const OWNER = '37592747483';
+    const REPO = 'Suggestion-box';
+    const FILE_PATH = 'suggestions.json';
 
     const STORAGE_KEY = 'suggestions-data-v1';           // local cached shared suggestions
     const PENDING_KEY = 'suggestions-pending-v1';        // local-only pending suggestions not yet shared
@@ -134,6 +140,7 @@
     const publishBtn = document.getElementById('publishBtn');
     const clearPendingBtn = document.getElementById('clearPending');
     const pendingCountEl = document.getElementById('pendingCount');
+    const publishStatusEl = document.getElementById('publishStatus');
 
     // Helpers
     function generateCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -238,7 +245,7 @@
       sText.value = '';
       sCode.value = '';
       renderPending();
-      alert('Saved locally. This pending suggestion will NOT appear in the shared list until published to the repository. Click "Request publish" to open a prefilled GitHub issue to ask the repo owner to add it.');
+      publishStatusEl.textContent = 'Saved locally. Use "Publish pending to repo" to push to repository (requires a GitHub Personal Access Token with repo scope).';
     });
 
     function renderPending() {
@@ -259,7 +266,7 @@
     function extractCodesFromText(txt) {
       const tokens = new Set();
       txt.replace(/\b([A-Za-z0-9\-_]{2,})\b/g, (_, t) => tokens.add(t.toUpperCase()));
-      txt.replace(/[#@:]\s*([A-Za-z0-9\-_]{2,})/g, (_, t) => tokens.add(t.toUpperCase()));
+      txt.replace(/[#@: ]\s*([A-Za-z0-9\-_]{2,})/g, (_, t) => tokens.add(t.toUpperCase()));
       return Array.from(tokens);
     }
 
@@ -343,13 +350,80 @@
 
     clearAllBtn.onclick = () => { if (!confirm('Clear shared cache (local only)?')) return; state.shared = []; saveSharedCache(state.shared); renderSuggestionsContainer(); };
 
-    // Publish pending — opens a prefilled GitHub issue so repo owner can review and add to shared file
-    publishBtn.onclick = () => {
+    // Publish pending to repository using GitHub REST API (requires PAT with repo scope)
+    publishBtn.onclick = async () => {
+      publishStatusEl.textContent = '';
       if (!state.pending.length) return alert('No pending suggestions to publish.');
-      const title = encodeURIComponent('Request: publish suggestions to shared file');
-      const body = encodeURIComponent('Please add the following suggestions to suggestions.json in the repository:\n\n' + JSON.stringify(state.pending, null, 2) + '\n\nThank you.');
-      const url = `https://github.com/37592747483/Suggestion-box/issues/new?title=${title}&body=${body}`;
-      window.open(url, '_blank');
+
+      const token = prompt('Enter a GitHub Personal Access Token (repo scope). The token is kept in this tab session only.');
+      if (!token) return;
+      publishStatusEl.textContent = 'Publishing...';
+
+      try {
+        // fetch current file to get sha (if exists)
+        const getUrl = `${GITHUB_API_BASE}/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
+        let current = null;
+        let sha = null;
+        const getRes = await fetch(getUrl, { headers: { Authorization: 'token ' + token, Accept: 'application/vnd.github+json' } });
+        if (getRes.ok) {
+          current = await getRes.json();
+          sha = current.sha;
+        }
+
+        // determine existing array
+        let existing = [];
+        if (current && current.content) {
+          const decoded = atob(current.content.replace(/\n/g,''));
+          try { existing = JSON.parse(decoded); if (!Array.isArray(existing)) existing = []; } catch(e) { existing = []; }
+        } else {
+          // try to fetch raw as fallback
+          try {
+            const raw = await fetch(SHARED_URL + '?cachebust=' + Date.now(), { cache: 'no-store' });
+            if (raw.ok) existing = await raw.json();
+          } catch(e) { /* ignore */ }
+        }
+
+        // merge pending into existing (avoid duplicate codes)
+        const byCode = {};
+        (existing || []).forEach(s => { if (s && s.code) byCode[s.code.toUpperCase()] = s; });
+        (state.pending || []).forEach(s => { if (s && s.code) byCode[s.code.toUpperCase()] = s; });
+        const merged = Object.values(byCode);
+
+        const contentStr = JSON.stringify(merged, null, 2);
+        // base64 encode UTF-8
+        const encodeBase64 = str => btoa(unescape(encodeURIComponent(str)));
+        const body = {
+          message: 'Update suggestions.json — published from web UI',
+          content: encodeBase64(contentStr),
+          committer: { name: 'web-publish', email: 'noreply@example.com' }
+        };
+        if (sha) body.sha = sha;
+
+        const putUrl = `${GITHUB_API_BASE}/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
+        const putRes = await fetch(putUrl, {
+          method: 'PUT',
+          headers: { Authorization: 'token ' + token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!putRes.ok) {
+          const errText = await putRes.text();
+          throw new Error('GitHub API error: ' + putRes.status + ' ' + errText);
+        }
+
+        // success
+        const result = await putRes.json();
+        state.shared = merged;
+        saveSharedCache(state.shared);
+        state.pending = [];
+        savePending(state.pending);
+        renderPending();
+        renderSuggestionsContainer();
+        publishStatusEl.textContent = 'Published successfully. Commit: ' + (result.commit && result.commit.sha ? result.commit.sha : 'unknown');
+      } catch (err) {
+        publishStatusEl.textContent = 'Publish failed: ' + err.message;
+        alert('Publish failed: ' + err.message);
+      }
     };
 
     clearPendingBtn.onclick = () => { if (!confirm('Clear pending local suggestions?')) return; state.pending = []; savePending(state.pending); renderPending(); };
