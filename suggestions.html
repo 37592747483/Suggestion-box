@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Suggestion box — numeric unlock</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111; }
+    body { margin: 20px; background:#f6f7fb; }
+    .wrap { display:flex; gap:20px; align-items:flex-start; max-width:1100px; margin:0 auto; }
+    .card { background:white; border-radius:8px; box-shadow:0 6px 18px rgba(18,24,40,0.06); padding:16px; flex:1; }
+    h2 { margin:0 0 12px 0; font-size:18px; }
+    form { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+    input[type="text"] { padding:8px 10px; border:1px solid #d7dbe6; border-radius:6px; font-size:14px; width:100%; }
+    button { padding:8px 12px; border-radius:6px; border:0; background:#2563eb; color:white; cursor:pointer; }
+    button.ghost { background:transparent; color:#374151; border:1px solid #e6e9f2; }
+    .suggestions-list { margin-top:8px; display:flex; flex-direction:column; gap:8px; max-height:420px; overflow:auto; padding-right:6px; }
+    .suggestion { display:flex; gap:8px; align-items:flex-start; padding:8px; border:1px solid #eef2ff; border-radius:8px; }
+    .code-badge { background:#eef2ff; color:#1e3a8a; font-weight:600; padding:6px 8px; border-radius:6px; font-size:13px; display:inline-block; min-width:64px; text-align:center; }
+    .s-text { flex:1; white-space:pre-wrap; word-break:break-word; font-size:14px; color:#111827; }
+    .s-actions { display:flex; gap:6px; align-items:center; }
+    .small { font-size:12px; color:#6b7280; }
+    .code-panel { display:flex; flex-direction:column; gap:8px; }
+    textarea.code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:13px; padding:12px; border-radius:8px; border:1px solid #e6e9f2; background:#0f172a08; min-height:260px; resize:vertical; width:100%; }
+    .matches { margin-top:6px; display:flex; flex-direction:column; gap:8px; max-height:350px; overflow:auto; }
+    .no-match { color:#9ca3af; font-size:13px; }
+    .controls { display:flex; gap:8px; align-items:center; }
+    .muted { color:#6b7280; font-size:13px; }
+    .clear { background:#ef4444; }
+    .locked { display:flex; align-items:center; justify-content:center; padding:18px; border:2px dashed #e5e7eb; border-radius:8px; color:#6b7280; background:#fbfbfd; min-height:120px; text-align:center; }
+    .settings { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    @media (max-width:900px) { .wrap { flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" style="max-width:480px;">
+      <h2>Add suggestion</h2>
+      <form id="addForm">
+        <input id="sText" type="text" placeholder="Suggestion text (what you want saved)" required />
+        <input id="sCode" type="text" placeholder="Optional code (e.g. ABC123)" style="width:140px;" />
+        <button type="submit">Add</button>
+      </form>
+
+      <div class="settings">
+        <div class="muted">Stored suggestions: <strong id="count">0</strong></div>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <button id="changeCode" class="ghost" title="Change numeric unlock code">Set unlock code</button>
+          <button id="export" class="ghost" title="Export suggestions as JSON">Export</button>
+          <button id="import" class="ghost" title="Import JSON">Import</button>
+          <button id="clearAll" class="clear" title="Clear all">Clear</button>
+        </div>
+      </div>
+
+      <div id="suggestionsContainer">
+        <!-- Will show either locked message or suggestions -->
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Code panel — type the numeric unlock code to reveal suggestions</h2>
+      <div class="code-panel">
+        <textarea id="codeArea" class="code" placeholder="Type the numeric unlock code (default 5213) here to reveal suggestions. After unlocked, typing suggestion codes will show matches as before."></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="muted">Unlock using the numeric code. After unlocked you can re-lock using the button.</div>
+          <div>
+            <button id="lockToggle" class="ghost">Lock</button>
+            <button id="clearCode" class="ghost">Clear</button>
+          </div>
+        </div>
+        <div class="matches" id="matches"></div>
+      </div>
+    </div>
+  </div>
+
+  <input id="fileInput" type="file" accept="application/json" style="display:none" />
+
+  <script>
+    const STORAGE_KEY = 'suggestions-data-v1';
+    const REVEAL_KEY = 'suggestions-reveal-code-v1';
+    const UNLOCKED_KEY = 'suggestions-unlocked-v1';
+
+    const DEFAULT_REVEAL = '5213';
+
+    function loadSuggestions() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      try { return JSON.parse(raw); } catch (e) { return []; }
+    }
+    function saveSuggestions(arr) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    }
+    function getRevealCode() {
+      return localStorage.getItem(REVEAL_KEY) || DEFAULT_REVEAL;
+    }
+    function setRevealCode(code) {
+      localStorage.setItem(REVEAL_KEY, String(code));
+    }
+    function isUnlocked() {
+      return sessionStorage.getItem(UNLOCKED_KEY) === '1';
+    }
+    function setUnlocked(val) {
+      sessionStorage.setItem(UNLOCKED_KEY, val ? '1' : '0');
+    }
+
+    const state = { suggestions: loadSuggestions() };
+
+    const sText = document.getElementById('sText');
+    const sCode = document.getElementById('sCode');
+    const addForm = document.getElementById('addForm');
+    const suggestionsContainer = document.getElementById('suggestionsContainer');
+    const matchesEl = document.getElementById('matches');
+    const codeArea = document.getElementById('codeArea');
+    const countEl = document.getElementById('count');
+    const lockToggleBtn = document.getElementById('lockToggle');
+    const clearCodeBtn = document.getElementById('clearCode');
+    const exportBtn = document.getElementById('export');
+    const importBtn = document.getElementById('import');
+    const clearAllBtn = document.getElementById('clearAll');
+    const fileInput = document.getElementById('fileInput');
+    const changeCodeBtn = document.getElementById('changeCode');
+
+    function renderSuggestionsContainer() {
+      suggestionsContainer.innerHTML = '';
+      if (!isUnlocked()) {
+        const locked = document.createElement('div');
+        locked.className = 'locked';
+        locked.innerHTML = `
+          <div>
+            <div style="font-weight:600; margin-bottom:8px;">Suggestions are locked</div>
+            <div class="small">Type the numeric unlock code into the code panel to reveal stored suggestions. Current unlock code is ${getRevealCode()}.</div>
+          </div>
+        `;
+        suggestionsContainer.appendChild(locked);
+        lockToggleBtn.textContent = 'Lock';
+        countEl.textContent = state.suggestions.length;
+        matchesEl.innerHTML = '';
+        return;
+      }
+
+      const listEl = document.createElement('div');
+      listEl.className = 'suggestions-list';
+      state.suggestions.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'suggestion';
+        row.innerHTML = `
+          <div class="code-badge">${escapeHtml(s.code)}</div>
+          <div class="s-text">
+            <div style="font-weight:600">${escapeHtml(s.text)}</div>
+            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
+          </div>
+          <div class="s-actions">
+            <button class="ghost" data-idx="${i}" title="Insert code">Insert</button>
+            <button class="ghost" data-copy="${s.code}" title="Copy">Copy</button>
+            <button class="ghost" data-del="${i}" title="Delete">Delete</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+      suggestionsContainer.appendChild(listEl);
+      countEl.textContent = state.suggestions.length;
+      wireListButtons();
+      updateMatchesFromCode();
+      lockToggleBtn.textContent = 'Lock';
+    }
+
+    function wireListButtons() {
+      suggestionsContainer.querySelectorAll('[data-idx]').forEach(btn => {
+        btn.onclick = () => {
+          const s = state.suggestions[btn.dataset.idx];
+          insertAtCursor(codeArea, s.code);
+          updateMatchesFromCode();
+        };
+      });
+      suggestionsContainer.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.onclick = () => navigator.clipboard?.writeText(btn.dataset.copy).catch(()=>{});
+      });
+      suggestionsContainer.querySelectorAll('[data-del]').forEach(btn => {
+        btn.onclick = () => {
+          if (!confirm('Delete this suggestion?')) return;
+          const idx = Number(btn.dataset.del);
+          state.suggestions.splice(idx,1);
+          saveSuggestions(state.suggestions);
+          renderSuggestionsContainer();
+        };
+      });
+    }
+
+    function generateCode() {
+      return Math.random().toString(36).slice(2,8).toUpperCase();
+    }
+
+    addForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const text = sText.value.trim();
+      let code = sCode.value.trim();
+      if (!text) return;
+      if (!code) {
+        const word = text.split(/\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase();
+        code = (word.slice(0,6) || generateCode()).toUpperCase();
+        while (state.suggestions.some(s=>s.code===code)) code = generateCode();
+      } else {
+        code = code.toUpperCase();
+        if (state.suggestions.some(s=>s.code===code)) {
+          let suffix = 1;
+          while (state.suggestions.some(s=>s.code===`${code}-${suffix}`)) suffix++;
+          code = `${code}-${suffix}`;
+        }
+      }
+      const obj = { code, text, created: Date.now() };
+      state.suggestions.unshift(obj);
+      saveSuggestions(state.suggestions);
+      sText.value = '';
+      sCode.value = '';
+      renderSuggestionsContainer();
+      sText.focus();
+    });
+
+    function extractCodesFromText(txt) {
+      const tokens = new Set();
+      txt.replace(/\b([A-Za-z0-9\-_]{2,})\b/g, (_, t) => tokens.add(t.toUpperCase()));
+      txt.replace(/[#@:]\s*([A-Za-z0-9\-_]{2,})/g, (_, t) => tokens.add(t.toUpperCase()));
+      return Array.from(tokens);
+    }
+
+    function updateMatchesFromCode() {
+      const txt = codeArea.value || '';
+      const revealCode = String(getRevealCode()).trim();
+
+      if (revealCode && txt.includes(revealCode)) {
+        setUnlocked(true);
+        renderSuggestionsContainer();
+      }
+
+      if (!isUnlocked()) {
+        matchesEl.innerHTML = '';
+        return;
+      }
+
+      if (txt.trim() === '*') {
+        renderMatches(state.suggestions);
+        return;
+      }
+
+      const tokens = extractCodesFromText(txt);
+      if (!tokens.length) {
+        matchesEl.innerHTML = `<div class="no-match">No codes detected — type or paste suggestion codes into the code panel, or insert a code from the list.</div>`;
+        return;
+      }
+
+      const tokenSet = new Set(tokens);
+      const matched = state.suggestions.filter(s =>
+        tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))
+      );
+
+      if (!matched.length) {
+        matchesEl.innerHTML = `<div class="no-match">No suggestions match the detected tokens: ${tokens.join(', ')}</div>`;
+      } else {
+        renderMatches(matched, tokens);
+      }
+    }
+
+    function renderMatches(arr) {
+      matchesEl.innerHTML = '';
+      arr.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'suggestion';
+        item.style.alignItems = 'center';
+        item.innerHTML = `
+          <div class="code-badge">${escapeHtml(s.code)}</div>
+          <div class="s-text">
+            <div style="font-weight:600">${escapeHtml(s.text)}</div>
+            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="ghost" data-insert="${s.code}">Insert</button>
+            <button class="ghost" data-copy="${s.code}">Copy</button>
+          </div>
+        `;
+        matchesEl.appendChild(item);
+      });
+
+      matchesEl.querySelectorAll('[data-copy]').forEach(b => {
+        b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{});
+      });
+      matchesEl.querySelectorAll('[data-insert]').forEach(b => {
+        b.onclick = () => {
+          insertAtCursor(codeArea, b.dataset.insert);
+          updateMatchesFromCode();
+        };
+      });
+    }
+
+    function insertAtCursor(el, text) {
+      const start = el.selectionStart || 0;
+      const end = el.selectionEnd || 0;
+      const val = el.value;
+      el.value = val.slice(0,start) + text + val.slice(end);
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos,pos);
+    }
+
+    exportBtn.onclick = () => {
+      const dataStr = JSON.stringify(state.suggestions, null, 2);
+      const blob = new Blob([dataStr], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'suggestions.json'; document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    };
+
+    importBtn.onclick = () => fileInput.click();
+    fileInput.onchange = e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          if (!Array.isArray(imported)) throw new Error('JSON needs to be an array');
+          for (const it of imported) {
+            if (!it.code || !it.text) continue;
+            let code = String(it.code).toUpperCase();
+            if (state.suggestions.some(s => s.code === code)) {
+              let suffix = 1;
+              while (state.suggestions.some(s => s.code === `${code}-${suffix}`)) suffix++;
+              code = `${code}-${suffix}`;
+            }
+            state.suggestions.push({ code, text: String(it.text), created: it.created || Date.now() });
+          }
+          saveSuggestions(state.suggestions);
+          renderSuggestionsContainer();
+          fileInput.value = '';
+        } catch (err) {
+          alert('Invalid JSON import: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    clearAllBtn.onclick = () => {
+      if (!confirm('Clear all suggestions?')) return;
+      state.suggestions = [];
+      saveSuggestions(state.suggestions);
+      renderSuggestionsContainer();
+    };
+
+    lockToggleBtn.onclick = () => {
+      if (isUnlocked()) {
+        setUnlocked(false);
+        renderSuggestionsContainer();
+      } else {
+        const txt = codeArea.value || '';
+        const reveal = getRevealCode();
+        if (reveal && txt.includes(reveal)) {
+          setUnlocked(true);
+          renderSuggestionsContainer();
+        } else {
+          alert('To unlock, type the numeric unlock code 5213 into the code panel.');
+        }
+      }
+    };
+
+    clearCodeBtn.onclick = () => {
+      codeArea.value = '';
+      updateMatchesFromCode();
+      codeArea.focus();
+    };
+
+    changeCodeBtn.onclick = () => {
+      const cur = getRevealCode();
+      const raw = prompt('Set numeric unlock code (digits only). Current: ' + cur, cur);
+      if (raw === null) return;
+      const candidate = String(raw).trim();
+      if (!/^\d+$/.test(candidate)) {
+        alert('Unlock code must be digits only (e.g. 5213).');
+        return;
+      }
+      setRevealCode(candidate);
+      alert('Unlock code set to ' + candidate);
+    };
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    function init() {
+      if (!localStorage.getItem(REVEAL_KEY)) setRevealCode(DEFAULT_REVEAL);
+      if (!sessionStorage.getItem(UNLOCKED_KEY)) setUnlocked(false);
+      renderSuggestionsContainer();
+      updateMatchesFromCode();
+      codeArea.addEventListener('input', () => updateMatchesFromCode());
+    }
+
+    init();
+  </script>
+</body>
+</html>
