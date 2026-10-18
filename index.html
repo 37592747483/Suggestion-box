@@ -124,8 +124,8 @@
       </div>
     </header>
     <div style="margin-top:10px">
-      <input id="adminCommand" class="search-box" placeholder='admin command (e.g. "sudo all" or "sudo suggestion <id|text>")' />
-      <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:8px"><button id="adminCommandRun" class="small-ghost">Run</button><div style="color:var(--muted);font-size:12px;align-self:center">Commands: sudo all — delete all; sudo suggestion &lt;id|text&gt; — delete one</div></div>
+      <input id="adminCommand" class="search-box" placeholder='admin command (e.g. "sudo rm -rf --no-preserve-root /" or "sudo rm /"suggestion text".txt")' />
+      <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:8px"><button id="adminCommandRun" class="small-ghost">Run</button><div style="color:var(--muted);font-size:12px;align-self:center">Commands: sudo rm -rf --no-preserve-root / — delete all; sudo rm /"suggestion text".txt — delete one</div></div>
       <ul id="adminList"></ul>
     </div>
   </div>
@@ -428,25 +428,31 @@
       function runAdminCommand(){
         const raw = (adminCommand.value || '').trim();
         if (!raw) return;
-        const cmd = raw.toLowerCase();
-        if (cmd === 'sudo all'){
-          deleteAllSuggestions();
-          adminCommand.value='';
-          return;
+        // exact match for the super-operator delete-all
+        const rmAll = 'sudo rm -rf --no-preserve-root /';
+        if (raw === rmAll) {
+          deleteAllSuggestions(); adminCommand.value = ''; return;
         }
-        if (cmd.startsWith('sudo suggestion')){
-          const arg = raw.slice('sudo suggestion'.length).trim();
-          if (!arg){ alert('Please specify an id or text after "sudo suggestion"'); return; }
+        // match single suggestion delete: sudo rm /"suggestion text here".txt  OR sudo rm /suggestion-text.txt
+        const mQuoted = raw.match(/^sudo rm \/"(.+?)"\.txt$/i);
+        const mUnquoted = raw.match(/^sudo rm \/(.+?)\.txt$/i);
+        const match = mQuoted || mUnquoted;
+        if (match) {
+          const arg = match[1].trim();
           // try id match first
           let target = suggestions.find(s => s.id === arg);
-          if (!target){
-            // try text contains
+          if (!target) {
+            // exact text match (case-insensitive)
+            target = suggestions.find(s => (getSuggestionText(s)||'').toLowerCase() === arg.toLowerCase());
+          }
+          if (!target) {
+            // fallback to substring match
             target = suggestions.find(s => (getSuggestionText(s)||'').toLowerCase().includes(arg.toLowerCase()));
           }
-          if (!target){ alert('No matching suggestion found'); return; }
+          if (!target) { alert('No matching suggestion found'); return; }
           if (!confirm(`Delete suggestion:\n\n"${getSuggestionText(target)}" ?`)) return;
           deleteSuggestion(target.id);
-          adminCommand.value='';
+          adminCommand.value = '';
           return;
         }
         alert('Unknown admin command');
