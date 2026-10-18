@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Suggestion box — numeric unlock</title>
+  <title>Suggestion box — shared unlock</title>
   <style>
     :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111; }
     body { margin: 20px; background:#f6f7fb; }
@@ -29,38 +29,47 @@
     .clear { background:#ef4444; }
     .locked { display:flex; align-items:center; justify-content:center; padding:18px; border:2px dashed #e5e7eb; border-radius:8px; color:#6b7280; background:#fbfbfd; min-height:120px; text-align:center; }
     .settings { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .pending { margin-top:8px; padding:10px; border:1px dashed #e6e9f2; border-radius:8px; background:#ffffff; }
     @media (max-width:900px) { .wrap { flex-direction:column; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card" style="max-width:480px;">
-      <h2>Add suggestion</h2>
+      <h2>Add suggestion (local only)</h2>
       <form id="addForm">
         <input id="sText" type="text" placeholder="Suggestion text (what you want saved)" required />
         <input id="sCode" type="text" placeholder="Optional code (e.g. ABC123)" style="width:140px;" />
-        <button type="submit">Add</button>
+        <button type="submit">Add (local)</button>
       </form>
 
       <div class="settings">
-        <div class="muted">Stored suggestions: <strong id="count">0</strong></div>
+        <div class="muted">Stored shared suggestions: <strong id="count">0</strong></div>
         <div style="margin-left:auto; display:flex; gap:8px;">
-          <button id="changeCode" class="ghost" title="Change numeric unlock code">Set unlock code</button>
           <button id="export" class="ghost" title="Export suggestions as JSON">Export</button>
           <button id="import" class="ghost" title="Import JSON">Import</button>
-          <button id="clearAll" class="clear" title="Clear all">Clear</button>
+          <button id="clearAll" class="clear" title="Clear shared cache">Clear shared cache</button>
+        </div>
+      </div>
+
+      <div class="pending" id="pendingBox">
+        <div style="font-weight:600">Pending local suggestions (not shared)</div>
+        <div class="small" id="pendingCount">0 pending</div>
+        <div style="margin-top:8px; display:flex; gap:8px;">
+          <button id="publishBtn" class="ghost">Request publish (open issue)</button>
+          <button id="clearPending" class="ghost">Clear pending</button>
         </div>
       </div>
 
       <div id="suggestionsContainer">
-        <!-- Will show either locked message or suggestions -->
+        <!-- locked or shared suggestions will show here -->
       </div>
     </div>
 
     <div class="card">
-      <h2>Code panel — type the numeric unlock code to reveal suggestions</h2>
+      <h2>Code panel — type the numeric unlock code to reveal shared suggestions</h2>
       <div class="code-panel">
-        <textarea id="codeArea" class="code" placeholder="Type the numeric unlock code (default 5213) here to reveal suggestions. After unlocked, typing suggestion codes will show matches as before."></textarea>
+        <textarea id="codeArea" class="code" placeholder="Type the numeric unlock code (default 5213) here to reveal shared suggestions. After unlocked, typing suggestion codes will show matches as before."></textarea>
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div class="muted">Unlock using the numeric code. After unlocked you can re-lock using the button.</div>
           <div>
@@ -76,35 +85,39 @@
   <input id="fileInput" type="file" accept="application/json" style="display:none" />
 
   <script>
-    const STORAGE_KEY = 'suggestions-data-v1';
+    // Shared suggestions are read from the repo raw URL so all users who open the page and type the unlock
+    // code will see the same shared list (once that file is updated in the repository).
+    const SHARED_URL = 'https://raw.githubusercontent.com/37592747483/Suggestion-box/main/suggestions.json';
+
+    const STORAGE_KEY = 'suggestions-data-v1';           // local cached shared suggestions
+    const PENDING_KEY = 'suggestions-pending-v1';        // local-only pending suggestions not yet shared
     const REVEAL_KEY = 'suggestions-reveal-code-v1';
     const UNLOCKED_KEY = 'suggestions-unlocked-v1';
 
     const DEFAULT_REVEAL = '5213';
 
-    function loadSuggestions() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      try { return JSON.parse(raw); } catch (e) { return []; }
+    // Load and save shared-cache (local only) and pending
+    function loadSharedCache() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; }
     }
-    function saveSuggestions(arr) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    function saveSharedCache(arr) { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+    function loadPending() {
+      try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || []; } catch(e) { return []; }
     }
-    function getRevealCode() {
-      return localStorage.getItem(REVEAL_KEY) || DEFAULT_REVEAL;
-    }
-    function setRevealCode(code) {
-      localStorage.setItem(REVEAL_KEY, String(code));
-    }
-    function isUnlocked() {
-      return sessionStorage.getItem(UNLOCKED_KEY) === '1';
-    }
-    function setUnlocked(val) {
-      sessionStorage.setItem(UNLOCKED_KEY, val ? '1' : '0');
-    }
+    function savePending(arr) { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }
 
-    const state = { suggestions: loadSuggestions() };
+    function getRevealCode() { return localStorage.getItem(REVEAL_KEY) || DEFAULT_REVEAL; }
+    function setRevealCode(code) { localStorage.setItem(REVEAL_KEY, String(code)); }
+    function isUnlocked() { return sessionStorage.getItem(UNLOCKED_KEY) === '1'; }
+    function setUnlocked(v) { sessionStorage.setItem(UNLOCKED_KEY, v ? '1' : '0'); }
 
+    // state
+    const state = {
+      shared: loadSharedCache(),
+      pending: loadPending()
+    };
+
+    // DOM
     const sText = document.getElementById('sText');
     const sCode = document.getElementById('sCode');
     const addForm = document.getElementById('addForm');
@@ -118,8 +131,31 @@
     const importBtn = document.getElementById('import');
     const clearAllBtn = document.getElementById('clearAll');
     const fileInput = document.getElementById('fileInput');
-    const changeCodeBtn = document.getElementById('changeCode');
+    const publishBtn = document.getElementById('publishBtn');
+    const clearPendingBtn = document.getElementById('clearPending');
+    const pendingCountEl = document.getElementById('pendingCount');
 
+    // Helpers
+    function generateCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
+    function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+    // Fetch shared suggestions from the repo raw file and cache locally.
+    async function fetchShared() {
+      try {
+        const r = await fetch(SHARED_URL + '?cachebust=' + Date.now(), {cache: 'no-store'});
+        if (!r.ok) throw new Error('Failed to fetch shared suggestions');
+        const arr = await r.json();
+        if (!Array.isArray(arr)) throw new Error('Invalid format');
+        state.shared = arr;
+        saveSharedCache(arr);
+        return arr;
+      } catch (err) {
+        // return cached if fetch fails
+        return state.shared || [];
+      }
+    }
+
+    // Render container depending on locked/unlocked
     function renderSuggestionsContainer() {
       suggestionsContainer.innerHTML = '';
       if (!isUnlocked()) {
@@ -127,38 +163,39 @@
         locked.className = 'locked';
         locked.innerHTML = `
           <div>
-            <div style="font-weight:600; margin-bottom:8px;">Suggestions are locked</div>
-            <div class="small">Type the numeric unlock code into the code panel to reveal stored suggestions. Current unlock code is ${getRevealCode()}.</div>
+            <div style="font-weight:600; margin-bottom:8px;">Shared suggestions are locked</div>
+            <div class="small">Type the numeric unlock code into the code panel to reveal the shared suggestions from the repository. Current unlock code is ${getRevealCode()}.</div>
+            <div class="small" style="margin-top:8px">Pending local suggestions will not be shown until they are published to the shared repository file.</div>
           </div>
         `;
         suggestionsContainer.appendChild(locked);
         lockToggleBtn.textContent = 'Lock';
-        countEl.textContent = state.suggestions.length;
+        countEl.textContent = (state.shared || []).length;
         matchesEl.innerHTML = '';
         return;
       }
 
+      // unlocked: show shared suggestions only (not pending local ones)
       const listEl = document.createElement('div');
       listEl.className = 'suggestions-list';
-      state.suggestions.forEach((s, i) => {
+      (state.shared || []).forEach((s, i) => {
         const row = document.createElement('div');
         row.className = 'suggestion';
         row.innerHTML = `
           <div class="code-badge">${escapeHtml(s.code)}</div>
           <div class="s-text">
             <div style="font-weight:600">${escapeHtml(s.text)}</div>
-            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
+            <div class="small">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div>
           </div>
           <div class="s-actions">
             <button class="ghost" data-idx="${i}" title="Insert code">Insert</button>
             <button class="ghost" data-copy="${s.code}" title="Copy">Copy</button>
-            <button class="ghost" data-del="${i}" title="Delete">Delete</button>
           </div>
         `;
         listEl.appendChild(row);
       });
       suggestionsContainer.appendChild(listEl);
-      countEl.textContent = state.suggestions.length;
+      countEl.textContent = (state.shared || []).length;
       wireListButtons();
       updateMatchesFromCode();
       lockToggleBtn.textContent = 'Lock';
@@ -167,7 +204,7 @@
     function wireListButtons() {
       suggestionsContainer.querySelectorAll('[data-idx]').forEach(btn => {
         btn.onclick = () => {
-          const s = state.suggestions[btn.dataset.idx];
+          const s = state.shared[btn.dataset.idx];
           insertAtCursor(codeArea, s.code);
           updateMatchesFromCode();
         };
@@ -175,21 +212,9 @@
       suggestionsContainer.querySelectorAll('[data-copy]').forEach(btn => {
         btn.onclick = () => navigator.clipboard?.writeText(btn.dataset.copy).catch(()=>{});
       });
-      suggestionsContainer.querySelectorAll('[data-del]').forEach(btn => {
-        btn.onclick = () => {
-          if (!confirm('Delete this suggestion?')) return;
-          const idx = Number(btn.dataset.del);
-          state.suggestions.splice(idx,1);
-          saveSuggestions(state.suggestions);
-          renderSuggestionsContainer();
-        };
-      });
     }
 
-    function generateCode() {
-      return Math.random().toString(36).slice(2,8).toUpperCase();
-    }
-
+    // Add suggestion — local only and NOT shown until published to shared file
     addForm.addEventListener('submit', e => {
       e.preventDefault();
       const text = sText.value.trim();
@@ -198,24 +223,39 @@
       if (!code) {
         const word = text.split(/\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase();
         code = (word.slice(0,6) || generateCode()).toUpperCase();
-        while (state.suggestions.some(s=>s.code===code)) code = generateCode();
+        while (state.pending.some(s=>s.code===code) || (state.shared || []).some(s=>s.code===code)) code = generateCode();
       } else {
         code = code.toUpperCase();
-        if (state.suggestions.some(s=>s.code===code)) {
+        if (state.pending.some(s=>s.code===code) || (state.shared || []).some(s=>s.code===code)) {
           let suffix = 1;
-          while (state.suggestions.some(s=>s.code===`${code}-${suffix}`)) suffix++;
+          while (state.pending.some(s=>s.code===`${code}-${suffix}`) || (state.shared || []).some(s=>s.code===`${code}-${suffix}`)) suffix++;
           code = `${code}-${suffix}`;
         }
       }
       const obj = { code, text, created: Date.now() };
-      state.suggestions.unshift(obj);
-      saveSuggestions(state.suggestions);
+      state.pending.unshift(obj);
+      savePending(state.pending);
       sText.value = '';
       sCode.value = '';
-      renderSuggestionsContainer();
-      sText.focus();
+      renderPending();
+      alert('Saved locally. This pending suggestion will NOT appear in the shared list until published to the repository. Click "Request publish" to open a prefilled GitHub issue to ask the repo owner to add it.');
     });
 
+    function renderPending() {
+      pendingCountEl.textContent = state.pending.length + ' pending';
+    }
+
+    function insertAtCursor(el, text) {
+      const start = el.selectionStart || 0;
+      const end = el.selectionEnd || 0;
+      const val = el.value;
+      el.value = val.slice(0,start) + text + val.slice(end);
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos,pos);
+    }
+
+    // Detect tokens in code area
     function extractCodesFromText(txt) {
       const tokens = new Set();
       txt.replace(/\b([A-Za-z0-9\-_]{2,})\b/g, (_, t) => tokens.add(t.toUpperCase()));
@@ -223,12 +263,14 @@
       return Array.from(tokens);
     }
 
-    function updateMatchesFromCode() {
+    async function updateMatchesFromCode() {
       const txt = codeArea.value || '';
       const revealCode = String(getRevealCode()).trim();
 
+      // unlock if reveal code appears
       if (revealCode && txt.includes(revealCode)) {
         setUnlocked(true);
+        await fetchShared(); // refresh shared list
         renderSuggestionsContainer();
       }
 
@@ -238,25 +280,22 @@
       }
 
       if (txt.trim() === '*') {
-        renderMatches(state.suggestions);
+        renderMatches(state.shared || []);
         return;
       }
 
       const tokens = extractCodesFromText(txt);
       if (!tokens.length) {
-        matchesEl.innerHTML = `<div class="no-match">No codes detected — type or paste suggestion codes into the code panel, or insert a code from the list.</div>`;
+        matchesEl.innerHTML = `<div class="no-match">No codes detected — type or paste suggestion codes into the code panel.</div>`;
         return;
       }
 
       const tokenSet = new Set(tokens);
-      const matched = state.suggestions.filter(s =>
-        tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))
-      );
-
+      const matched = (state.shared || []).filter(s => tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t)));
       if (!matched.length) {
-        matchesEl.innerHTML = `<div class="no-match">No suggestions match the detected tokens: ${tokens.join(', ')}</div>`;
+        matchesEl.innerHTML = `<div class="no-match">No shared suggestions match the detected tokens: ${tokens.join(', ')}</div>`;
       } else {
-        renderMatches(matched, tokens);
+        renderMatches(matched);
       }
     }
 
@@ -270,7 +309,7 @@
           <div class="code-badge">${escapeHtml(s.code)}</div>
           <div class="s-text">
             <div style="font-weight:600">${escapeHtml(s.text)}</div>
-            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
+            <div class="small">created: ${s.created ? new Date(s.created).toLocaleString() : 'shared'}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;">
             <button class="ghost" data-insert="${s.code}">Insert</button>
@@ -279,124 +318,65 @@
         `;
         matchesEl.appendChild(item);
       });
-
-      matchesEl.querySelectorAll('[data-copy]').forEach(b => {
-        b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{});
-      });
-      matchesEl.querySelectorAll('[data-insert]').forEach(b => {
-        b.onclick = () => {
-          insertAtCursor(codeArea, b.dataset.insert);
-          updateMatchesFromCode();
-        };
-      });
+      matchesEl.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{}));
+      matchesEl.querySelectorAll('[data-insert]').forEach(b => b.onclick = () => { insertAtCursor(codeArea, b.dataset.insert); updateMatchesFromCode(); });
     }
 
-    function insertAtCursor(el, text) {
-      const start = el.selectionStart || 0;
-      const end = el.selectionEnd || 0;
-      const val = el.value;
-      el.value = val.slice(0,start) + text + val.slice(end);
-      el.focus();
-      const pos = start + text.length;
-      el.setSelectionRange(pos,pos);
-    }
-
+    // Export/Import shared cache (local)
     exportBtn.onclick = () => {
-      const dataStr = JSON.stringify(state.suggestions, null, 2);
+      const dataStr = JSON.stringify(state.shared, null, 2);
       const blob = new Blob([dataStr], { type:'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'suggestions.json'; document.body.appendChild(a); a.click();
-      a.remove(); URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.href = url; a.download = 'shared-suggestions.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     };
-
     importBtn.onclick = () => fileInput.click();
     fileInput.onchange = e => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
+      const file = e.target.files && e.target.files[0]; if (!file) return;
+      const reader = new FileReader(); reader.onload = () => {
         try {
           const imported = JSON.parse(reader.result);
           if (!Array.isArray(imported)) throw new Error('JSON needs to be an array');
-          for (const it of imported) {
-            if (!it.code || !it.text) continue;
-            let code = String(it.code).toUpperCase();
-            if (state.suggestions.some(s => s.code === code)) {
-              let suffix = 1;
-              while (state.suggestions.some(s => s.code === `${code}-${suffix}`)) suffix++;
-              code = `${code}-${suffix}`;
-            }
-            state.suggestions.push({ code, text: String(it.text), created: it.created || Date.now() });
-          }
-          saveSuggestions(state.suggestions);
-          renderSuggestionsContainer();
-          fileInput.value = '';
-        } catch (err) {
-          alert('Invalid JSON import: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
+          state.shared = imported; saveSharedCache(state.shared); renderSuggestionsContainer();
+        } catch (err) { alert('Invalid JSON import: ' + err.message); }
+      }; reader.readAsText(file);
     };
 
-    clearAllBtn.onclick = () => {
-      if (!confirm('Clear all suggestions?')) return;
-      state.suggestions = [];
-      saveSuggestions(state.suggestions);
-      renderSuggestionsContainer();
+    clearAllBtn.onclick = () => { if (!confirm('Clear shared cache (local only)?')) return; state.shared = []; saveSharedCache(state.shared); renderSuggestionsContainer(); };
+
+    // Publish pending — opens a prefilled GitHub issue so repo owner can review and add to shared file
+    publishBtn.onclick = () => {
+      if (!state.pending.length) return alert('No pending suggestions to publish.');
+      const title = encodeURIComponent('Request: publish suggestions to shared file');
+      const body = encodeURIComponent('Please add the following suggestions to suggestions.json in the repository:\n\n' + JSON.stringify(state.pending, null, 2) + '\n\nThank you.');
+      const url = `https://github.com/37592747483/Suggestion-box/issues/new?title=${title}&body=${body}`;
+      window.open(url, '_blank');
     };
 
-    lockToggleBtn.onclick = () => {
+    clearPendingBtn.onclick = () => { if (!confirm('Clear pending local suggestions?')) return; state.pending = []; savePending(state.pending); renderPending(); };
+
+    // Lock toggle
+    lockToggleBtn.onclick = async () => {
       if (isUnlocked()) {
-        setUnlocked(false);
-        renderSuggestionsContainer();
+        setUnlocked(false); renderSuggestionsContainer();
       } else {
-        const txt = codeArea.value || '';
-        const reveal = getRevealCode();
-        if (reveal && txt.includes(reveal)) {
-          setUnlocked(true);
-          renderSuggestionsContainer();
-        } else {
-          alert('To unlock, type the numeric unlock code 5213 into the code panel.');
-        }
+        const txt = codeArea.value || ''; const reveal = getRevealCode();
+        if (reveal && txt.includes(reveal)) { await fetchShared(); setUnlocked(true); renderSuggestionsContainer(); } else { alert('To unlock, type the numeric unlock code ' + getRevealCode() + ' into the code panel.'); }
       }
     };
 
-    clearCodeBtn.onclick = () => {
-      codeArea.value = '';
-      updateMatchesFromCode();
-      codeArea.focus();
-    };
-
-    changeCodeBtn.onclick = () => {
-      const cur = getRevealCode();
-      const raw = prompt('Set numeric unlock code (digits only). Current: ' + cur, cur);
-      if (raw === null) return;
-      const candidate = String(raw).trim();
-      if (!/^\d+$/.test(candidate)) {
-        alert('Unlock code must be digits only (e.g. 5213).');
-        return;
-      }
-      setRevealCode(candidate);
-      alert('Unlock code set to ' + candidate);
-    };
-
-    function escapeHtml(s) {
-      return String(s)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#39;');
-    }
+    clearCodeBtn.onclick = () => { codeArea.value = ''; updateMatchesFromCode(); codeArea.focus(); };
 
     function init() {
       if (!localStorage.getItem(REVEAL_KEY)) setRevealCode(DEFAULT_REVEAL);
       if (!sessionStorage.getItem(UNLOCKED_KEY)) setUnlocked(false);
+      renderPending();
+      // Attempt to load cached shared suggestions
+      state.shared = loadSharedCache();
       renderSuggestionsContainer();
-      updateMatchesFromCode();
-      codeArea.addEventListener('input', () => updateMatchesFromCode());
+      codeArea.addEventListener('input', debounce(() => updateMatchesFromCode(), 120));
     }
+
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
 
     init();
   </script>
