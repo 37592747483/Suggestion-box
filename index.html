@@ -124,6 +124,8 @@
       </div>
     </header>
     <div style="margin-top:10px">
+      <input id="adminCommand" class="search-box" placeholder='admin command (e.g. "sudo all" or "sudo suggestion <id|text>")' />
+      <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:8px"><button id="adminCommandRun" class="small-ghost">Run</button><div style="color:var(--muted);font-size:12px;align-self:center">Commands: sudo all — delete all; sudo suggestion &lt;id|text&gt; — delete one</div></div>
       <ul id="adminList"></ul>
     </div>
   </div>
@@ -159,6 +161,8 @@
       const closeAdmin = document.getElementById('closeAdmin');
       const refreshAdmin = document.getElementById('refreshAdmin');
       const deleteAllBtn = document.getElementById('deleteAllBtn');
+      const adminCommand = document.getElementById('adminCommand');
+      const adminCommandRun = document.getElementById('adminCommandRun');
 
       let suggestions = [];
 
@@ -310,9 +314,10 @@
           del.addEventListener('click', async ()=>{
             if (!confirm('Delete this suggestion?')) return; await deleteSuggestion(s.id); 
           });
+          const idLabel = document.createElement('div'); idLabel.style.fontSize='11px'; idLabel.style.color='var(--muted)'; idLabel.textContent = `id: ${s.id}`;
           right.appendChild(upBtn); right.appendChild(pinBtn); right.appendChild(del);
 
-          li.appendChild(left); li.appendChild(right);
+          li.appendChild(left); li.appendChild(right); li.appendChild(idLabel);
           adminList.appendChild(li);
         });
       }
@@ -419,6 +424,37 @@
       closeAdmin.addEventListener('click', ()=>{ adminPanel.classList.add('hidden'); adminPanel.setAttribute('aria-hidden','true'); });
       refreshAdmin.addEventListener('click', ()=> loadSuggestions());
       deleteAllBtn.addEventListener('click', ()=> deleteAllSuggestions());
+
+      function runAdminCommand(){
+        const raw = (adminCommand.value || '').trim();
+        if (!raw) return;
+        const cmd = raw.toLowerCase();
+        if (cmd === 'sudo all'){
+          deleteAllSuggestions();
+          adminCommand.value='';
+          return;
+        }
+        if (cmd.startsWith('sudo suggestion')){
+          const arg = raw.slice('sudo suggestion'.length).trim();
+          if (!arg){ alert('Please specify an id or text after "sudo suggestion"'); return; }
+          // try id match first
+          let target = suggestions.find(s => s.id === arg);
+          if (!target){
+            // try text contains
+            target = suggestions.find(s => (getSuggestionText(s)||'').toLowerCase().includes(arg.toLowerCase()));
+          }
+          if (!target){ alert('No matching suggestion found'); return; }
+          if (!confirm(`Delete suggestion:\n\n"${getSuggestionText(target)}" ?`)) return;
+          deleteSuggestion(target.id);
+          adminCommand.value='';
+          return;
+        }
+        alert('Unknown admin command');
+      }
+
+      adminCommandRun.addEventListener('click', runAdminCommand);
+      adminCommand.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') runAdminCommand(); });
+
     });
   </script>
 </body>
