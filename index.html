@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Suggestion box + Code panel</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111; }
+    body { margin: 20px; background:#f6f7fb; }
+    .wrap { display:flex; gap:20px; align-items:flex-start; max-width:1100px; margin:0 auto; }
+    .card { background:white; border-radius:8px; box-shadow:0 6px 18px rgba(18,24,40,0.06); padding:16px; flex:1; }
+    h2 { margin:0 0 12px 0; font-size:18px; }
+    form { display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+    input[type="text"] { padding:8px 10px; border:1px solid #d7dbe6; border-radius:6px; font-size:14px; width:100%; }
+    button { padding:8px 12px; border-radius:6px; border:0; background:#2563eb; color:white; cursor:pointer; }
+    button.ghost { background:transparent; color:#374151; border:1px solid #e6e9f2; }
+    .suggestions-list { margin-top:8px; display:flex; flex-direction:column; gap:8px; max-height:420px; overflow:auto; padding-right:6px; }
+    .suggestion { display:flex; gap:8px; align-items:flex-start; padding:8px; border:1px solid #eef2ff; border-radius:8px; }
+    .code-badge { background:#eef2ff; color:#1e3a8a; font-weight:600; padding:6px 8px; border-radius:6px; font-size:13px; display:inline-block; min-width:64px; text-align:center; }
+    .s-text { flex:1; white-space:pre-wrap; word-break:break-word; font-size:14px; color:#111827; }
+    .s-actions { display:flex; gap:6px; align-items:center; }
+    .small { font-size:12px; color:#6b7280; }
+    .code-panel { display:flex; flex-direction:column; gap:8px; }
+    textarea.code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:13px; padding:12px; border-radius:8px; border:1px solid #e6e9f2; background:#0f172a08; min-height:260px; resize:vertical; width:100%; }
+    .matches { margin-top:6px; display:flex; flex-direction:column; gap:8px; max-height:350px; overflow:auto; }
+    .no-match { color:#9ca3af; font-size:13px; }
+    .controls { display:flex; gap:8px; align-items:center; }
+    .muted { color:#6b7280; font-size:13px; }
+    .clear { background:#ef4444; }
+    @media (max-width:900px) { .wrap { flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" style="max-width:480px;">
+      <h2>Add suggestion</h2>
+      <form id="addForm">
+        <input id="sText" type="text" placeholder="Suggestion text (what you want saved)" required />
+        <input id="sCode" type="text" placeholder="Optional code (e.g. ABC123)" style="width:140px;" />
+        <button type="submit">Add</button>
+      </form>
+      <div class="controls" style="justify-content:space-between;">
+        <div class="muted">Stored suggestions: <span id="count">0</span></div>
+        <div style="display:flex;gap:8px;">
+          <button id="export" class="ghost" title="Export suggestions as JSON">Export</button>
+          <button id="import" class="ghost" title="Import JSON">Import</button>
+          <button id="clearAll" class="clear" title="Clear all">Clear</button>
+        </div>
+      </div>
+      <div class="suggestions-list" id="list"></div>
+    </div>
+
+    <div class="card">
+      <h2>Code panel — type a code to surface matching suggestions</h2>
+      <div class="code-panel">
+        <textarea id="codeArea" class="code" placeholder="Type or paste code here. If a suggestion code (e.g. ABC123) appears in this text it will show the associated suggestion(s). Use * to show all suggestions."></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="muted">Matches for codes found in the code text (live)</div>
+          <div>
+            <button id="showAll" class="ghost">Show all</button>
+            <button id="clearCode" class="ghost">Clear code</button>
+          </div>
+        </div>
+        <div class="matches" id="matches"></div>
+      </div>
+    </div>
+  </div>
+
+  <input id="fileInput" type="file" accept="application/json" style="display:none" />
+
+  <script>
+    // Simple suggestion store (localStorage)
+    const STORAGE_KEY = 'suggestions-data-v1';
+    function generateCode() {
+      return Math.random().toString(36).slice(2,8).toUpperCase();
+    }
+
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      try { return JSON.parse(raw); } catch(e) { return []; }
+    }
+    function save(arr) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    }
+
+    const state = { suggestions: load() };
+
+    // DOM refs
+    const sText = document.getElementById('sText');
+    const sCode = document.getElementById('sCode');
+    const addForm = document.getElementById('addForm');
+    const listEl = document.getElementById('list');
+    const matchesEl = document.getElementById('matches');
+    const codeArea = document.getElementById('codeArea');
+    const countEl = document.getElementById('count');
+    const showAllBtn = document.getElementById('showAll');
+    const clearCodeBtn = document.getElementById('clearCode');
+    const exportBtn = document.getElementById('export');
+    const importBtn = document.getElementById('import');
+    const clearAllBtn = document.getElementById('clearAll');
+    const fileInput = document.getElementById('fileInput');
+
+    function renderList() {
+      listEl.innerHTML = '';
+      state.suggestions.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'suggestion';
+        row.innerHTML = `
+          <div class="code-badge">${escapeHtml(s.code)}</div>
+          <div class="s-text">
+            <div style="font-weight:600">${escapeHtml(s.text)}</div>
+            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
+          </div>
+          <div class="s-actions">
+            <button class="ghost" data-idx="${i}" title="Copy code">Copy</button>
+            <button class="ghost" data-del="${i}" title="Delete">Delete</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+      countEl.textContent = state.suggestions.length;
+      wireListButtons();
+      updateMatchesFromCode(); // update matches because list changed
+    }
+
+    function wireListButtons() {
+      listEl.querySelectorAll('[data-idx]').forEach(btn => {
+        btn.onclick = () => {
+          const s = state.suggestions[btn.dataset.idx];
+          navigator.clipboard?.writeText(s.code).catch(()=>{});
+        };
+      });
+      listEl.querySelectorAll('[data-del]').forEach(btn => {
+        btn.onclick = () => {
+          const idx = Number(btn.dataset.del);
+          state.suggestions.splice(idx,1);
+          save(state.suggestions);
+          renderList();
+        };
+      });
+    }
+
+    addForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const text = sText.value.trim();
+      let code = sCode.value.trim();
+      if (!text) return;
+      if (!code) {
+        // create friendly code from words or random
+        const word = text.split(/\s+/).map(w=>w.replace(/[^A-Za-z0-9]/g,'')).filter(Boolean).slice(0,2).join('').toUpperCase();
+        code = (word.slice(0,6) || generateCode()).toUpperCase();
+        // ensure uniqueness
+        while (state.suggestions.some(s=>s.code===code)) code = generateCode();
+      } else {
+        code = code.toUpperCase();
+        if (state.suggestions.some(s=>s.code===code)) {
+          // make unique by appending suffix
+          let suffix = 1;
+          while (state.suggestions.some(s=>s.code===`${code}-${suffix}`)) suffix++;
+          code = `${code}-${suffix}`;
+        }
+      }
+      const obj = { code, text, created: Date.now() };
+      state.suggestions.unshift(obj); // newest first
+      save(state.suggestions);
+      sText.value = '';
+      sCode.value = '';
+      renderList();
+      sText.focus();
+    });
+
+    codeArea.addEventListener('input', () => updateMatchesFromCode());
+
+    function extractCodesFromText(txt) {
+      // A fuzzy approach:
+      // - Treat tokens of letters/numbers (length >=2) as possible codes
+      // - Also check explicit bracketed/capital tokens
+      const tokens = new Set();
+      txt.replace(/\b([A-Za-z0-9\-_]{2,})\b/g, (_, t) => tokens.add(t.toUpperCase()));
+      // also tokens with # or : (e.g. #ABC)
+      txt.replace(/[#@:]\s*([A-Za-z0-9\-_]{2,})/g, (_, t) => tokens.add(t.toUpperCase()));
+      return Array.from(tokens);
+    }
+
+    function updateMatchesFromCode() {
+      const txt = codeArea.value || '';
+      if (txt.trim() === '*') {
+        renderMatches(state.suggestions);
+        return;
+      }
+      const tokens = extractCodesFromText(txt);
+      if (!tokens.length) {
+        matchesEl.innerHTML = `<div class="no-match">No codes detected — start typing a code like ABC123 to see matched suggestions, or press "Show all".</div>`;
+        return;
+      }
+      // find suggestions where code is present in tokens OR where token appears inside suggestion code (partial)
+      const tokenSet = new Set(tokens);
+      const matched = state.suggestions.filter(s =>
+        tokenSet.has(s.code.toUpperCase()) || tokens.some(t => s.code.toUpperCase().includes(t))
+      );
+      if (!matched.length) {
+        matchesEl.innerHTML = `<div class="no-match">No suggestions match the codes detected: ${Array.from(tokens).join(', ')}</div>`;
+      } else {
+        renderMatches(matched, tokens);
+      }
+    }
+
+    function renderMatches(arr, tokens = []) {
+      matchesEl.innerHTML = '';
+      arr.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'suggestion';
+        item.style.alignItems = 'center';
+        item.innerHTML = `
+          <div class="code-badge">${escapeHtml(s.code)}</div>
+          <div class="s-text">
+            <div style="font-weight:600">${escapeHtml(s.text)}</div>
+            <div class="small">created: ${new Date(s.created).toLocaleString()}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="ghost" data-insert="${s.code}">Insert</button>
+            <button class="ghost" data-copy="${s.code}">Copy</button>
+          </div>
+        `;
+        matchesEl.appendChild(item);
+      });
+      // wire buttons
+      matchesEl.querySelectorAll('[data-copy]').forEach(b => {
+        b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).catch(()=>{});
+      });
+      matchesEl.querySelectorAll('[data-insert]').forEach(b => {
+        b.onclick = () => {
+          const code = b.dataset.insert;
+          // insert code at cursor
+          const el = codeArea;
+          const start = el.selectionStart || 0;
+          const end = el.selectionEnd || 0;
+          const val = el.value;
+          el.value = val.slice(0,start) + code + val.slice(end);
+          el.focus();
+          const pos = start + code.length;
+          el.setSelectionRange(pos,pos);
+          updateMatchesFromCode();
+        };
+      });
+    }
+
+    // Export/Import/Clear
+    exportBtn.onclick = () => {
+      const dataStr = JSON.stringify(state.suggestions, null, 2);
+      const blob = new Blob([dataStr], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'suggestions.json'; document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    };
+    importBtn.onclick = () => fileInput.click();
+    fileInput.onchange = e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          if (!Array.isArray(imported)) throw new Error('JSON needs to be an array');
+          // sanitize and merge (avoid duplicate codes)
+          for (const it of imported) {
+            if (!it.code || !it.text) continue;
+            let code = String(it.code).toUpperCase();
+            if (state.suggestions.some(s => s.code === code)) {
+              // append suffix
+              let suffix = 1;
+              while (state.suggestions.some(s => s.code === `${code}-${suffix}`)) suffix++;
+              code = `${code}-${suffix}`;
+            }
+            state.suggestions.push({ code, text: String(it.text), created: it.created || Date.now() });
+          }
+          save(state.suggestions);
+          renderList();
+          fileInput.value = '';
+        } catch (err) {
+          alert('Invalid JSON import: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    };
+    clearAllBtn.onclick = () => {
+      if (!confirm('Clear all suggestions?')) return;
+      state.suggestions = [];
+      save(state.suggestions);
+      renderList();
+    };
+
+    showAllBtn.onclick = () => {
+      renderMatches(state.suggestions);
+      codeArea.value = '*';
+    };
+    clearCodeBtn.onclick = () => {
+      codeArea.value = '';
+      updateMatchesFromCode();
+      codeArea.focus();
+    };
+
+    // escape to prevent HTML injection in text nodes
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    // initial render
+    renderList();
+    updateMatchesFromCode();
+  </script>
+</body>
+</html>
