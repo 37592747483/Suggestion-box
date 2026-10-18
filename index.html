@@ -40,6 +40,10 @@
     .main-grid{display:grid;grid-template-columns: 1fr 380px; gap:20px; align-items:start}
     @media (max-width:920px){ .main-grid{grid-template-columns:1fr} .sb{font-size:84px} }
     @media (max-width:560px){ .sb{ font-size:64px } .card{padding:18px} .controls{align-items:stretch} button,input.small{width:100%} .status{margin-left:0} }
+
+    /* Footer credit */
+    .footer-credit{margin-top:18px;text-align:center;color:var(--muted);font-size:12px}
+    .footer-credit a{color:var(--neon1);text-decoration:none}
   </style>
 </head>
 <body>
@@ -76,6 +80,8 @@
           </div>
         </div>
       </div>
+
+      <div class="footer-credit">Data storage powered by <a href="https://firebase.google.com/" target="_blank" rel="noopener">Firebase</a> (Firestore)</div>
     </div>
   </div>
 
