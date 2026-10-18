@@ -93,8 +93,16 @@
          window.__FIREBASE_CONFIG__ = { apiKey: '...', authDomain: '...', projectId: '...', ... };
     */
 
-    // Paste Firebase config here if you want Firestore syncing across devices, e.g.:
-    // window.__FIREBASE_CONFIG__ = { apiKey: '...', authDomain: '...', projectId: '...', storageBucket:'', messagingSenderId:'', appId:'' };
+    // Paste Firebase config here if you want Firestore syncing across devices
+    window.__FIREBASE_CONFIG__ = {
+      apiKey: "AIzaSyD9tiDJ2ZOlWfyKRuGQVYCkNHkcAngRnzk",
+      authDomain: "suggestion-box-17a66.firebaseapp.com",
+      projectId: "suggestion-box-17a66",
+      storageBucket: "suggestion-box-17a66.firebasestorage.app",
+      messagingSenderId: "381599735292",
+      appId: "1:381599735292:web:c4ae455c8f8ee748292679",
+      measurementId: "G-T6SNYFR980"
+    };
 
     const firebaseConfig = window.__FIREBASE_CONFIG__ || null;
     let useFirestore = false;
